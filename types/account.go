@@ -34,6 +34,13 @@ func ProtoAccount() authtypes.AccountI {
 	}
 }
 
+func NewEthAccount(ba *authtypes.BaseAccount, data ...[]byte) *EthAccount {
+	return &EthAccount{
+		BaseAccount: ba,
+		CodeHash:    ethcrypto.Keccak256(data...),
+	}
+}
+
 // EthAddress returns the account address ethereum format.
 func (acc EthAccount) EthAddress() ethcmn.Address {
 	return ethcmn.BytesToAddress(acc.GetAddress().Bytes())

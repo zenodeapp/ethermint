@@ -267,8 +267,7 @@ test-race:
 	@go test -v --vet=off -race ./... $(PACKAGES)
 
 test-import:
-	@go test ./tests/importer -v --vet=off --run=TestImportBlocks --datadir tmp \
-	--blockchain blockchain
+	@go test ./tests/importer -v --vet=off
 	rm -rf tests/importer/tmp
 
 test-rpc:

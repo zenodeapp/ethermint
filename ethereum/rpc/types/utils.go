@@ -111,7 +111,7 @@ func NewTransaction(tx *ethtypes.Transaction, blockHash common.Hash, blockNumber
 // from a tendermint Header.
 func EthHeaderFromTendermint(header tmtypes.Header) *ethtypes.Header {
 	return &ethtypes.Header{
-		ParentHash:  common.BytesToHash(header.LastBlockID.Hash.Bytes()),
+		ParentHash:  common.BytesToHash(header.LastBlockID.Hash),
 		UncleHash:   common.Hash{},
 		Coinbase:    common.Address{},
 		Root:        common.BytesToHash(header.AppHash),
@@ -119,6 +119,8 @@ func EthHeaderFromTendermint(header tmtypes.Header) *ethtypes.Header {
 		ReceiptHash: common.Hash{},
 		Difficulty:  nil,
 		Number:      big.NewInt(header.Height),
+		GasLimit:    0,
+		GasUsed:     0,
 		Time:        uint64(header.Time.Unix()),
 		Extra:       nil,
 		MixDigest:   common.Hash{},
