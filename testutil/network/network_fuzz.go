@@ -20,6 +20,10 @@ func FuzzNetworkRawRPC(f *fuzz.F) {
 	if binerr == nil {
 		testnetwork := New(nil, DefaultConfig())
 		defer testnetwork.Cleanup()
+		_, err := testnetwork.WaitForHeight(1)
+		if err != nil {
+			f.Fail("failed to start up the network")
+		}
 		// nolint
 		testnetwork.Validators[0].JSONRPCClient.SendTransaction(context.Background(), ethjson)
 		h, err := testnetwork.WaitForHeightWithTimeout(10, time.Minute)
@@ -61,6 +65,10 @@ func FuzzNetworkBackend(f *fuzz.F) {
 	}
 	testnetwork := New(nil, DefaultConfig())
 	defer testnetwork.Cleanup()
+	_, err := testnetwork.WaitForHeight(1)
+	if err != nil {
+		f.Fail("failed to start up the network")
+	}
 	// nolint
 	testnetwork.Validators[0].ETHbackend.SendTransaction(args)
 	h, err := testnetwork.WaitForHeightWithTimeout(10, time.Minute)
