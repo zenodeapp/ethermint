@@ -33,8 +33,6 @@ func FuzzNetworkRawRPC(f *fuzz.F) {
 			f.Fail("latestHeight should be greater or equal to")
 		}
 		testnetwork.Cleanup()
-	} else {
-		f.Discard()
 	}
 }
 
