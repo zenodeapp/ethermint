@@ -197,8 +197,8 @@ func New(t *testing.T, cfg Config) *Network {
 		baseDir = bD
 	} else {
 		id := uuid.New()
-		bD1 := fmt.Sprintf("/tmp/%s", id.String())
-		bD2, _ := ioutil.TempDir(bD1, cfg.ChainID)
+		bD1 := fmt.Sprintf("%s-%s", id.String(), cfg.ChainID)
+		bD2, _ := ioutil.TempDir("/tmp/", bD1)
 		baseDir = bD2
 	}
 
@@ -344,7 +344,6 @@ func New(t *testing.T, cfg Config) *Network {
 		if t != nil {
 			require.NoError(t, err)
 		}
-
 		info := map[string]string{"secret": secret}
 		infoBz, err := json.Marshal(info)
 		if t != nil {
