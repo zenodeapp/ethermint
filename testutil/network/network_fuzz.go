@@ -39,13 +39,13 @@ func FuzzNetworkRawRPC(f *fuzz.F) {
 func FuzzNetworkBackend(f *fuzz.F) {
 	al := &ethtypes.AccessList{}
 	sk := []ethcommon.Hash{}
-	f.Array("StorageKeys", []ethcommon.Hash{
+	f.Array("StorageKeys", &[]ethcommon.Hash{
 		ethcommon.BytesToHash(f.Bytes("Hash").Min(32).Max(32).Get()),
-	}).Populate(sk)
-	f.Array("AccessList", ethtypes.AccessList{ethtypes.AccessTuple{
+	}).Populate(&sk)
+	f.Array("AccessList", &ethtypes.AccessList{ethtypes.AccessTuple{
 		Address:     ethcommon.BytesToAddress(f.Bytes("Address").Min(20).Max(20).Get()),
 		StorageKeys: sk,
-	}}).Populate(al)
+	}}).Populate(&al)
 	to := ethcommon.BytesToAddress(f.Bytes("To").Min(20).Max(20).Get())
 	args := types.SendTxArgs{
 		From:       ethcommon.BytesToAddress(f.Bytes("From").Min(20).Max(20).Get()),
