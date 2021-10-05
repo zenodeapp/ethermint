@@ -7,11 +7,47 @@ import (
 	"time"
 
 	"git.fuzzbuzz.io/fuzz"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tharsis/ethermint/app"
+	"github.com/tharsis/ethermint/crypto/ethsecp256k1"
 	"github.com/tharsis/ethermint/ethereum/rpc/types"
+	"github.com/tharsis/ethermint/tests"
+	"github.com/tharsis/ethermint/x/evm"
+	evmtypes "github.com/tharsis/ethermint/x/evm/types"
 )
+
+func FuzzEVMApp(f *fuzz.F) {
+	checkTx := false
+	evmApp := app.Setup(checkTx)
+	ctx := evmApp.BaseApp.NewContext(checkTx, tmproto.Header{Height: 1, ChainID: "ethermint_9000-1", Time: time.Now().UTC()})
+	evmApp.EvmKeeper.WithContext(ctx)
+	handler := evm.NewHandler(evmApp.EvmKeeper)
+	chainID := evmApp.EvmKeeper.ChainID()
+
+	privKey, _ := ethsecp256k1.GenerateKey()
+
+	sto := sdk.AccAddress(privKey.PubKey().Address())
+
+	privKey, _ = ethsecp256k1.GenerateKey()
+
+	signer := tests.NewSigner(privKey)
+	ethSigner := ethtypes.LatestSignerForChainID(chainID)
+	from := common.BytesToAddress(privKey.PubKey().Address().Bytes())
+
+	to := common.BytesToAddress(sto)
+	tx := evmtypes.NewTx(chainID, 0, &to, big.NewInt(f.Int64("amount").Get()), f.Uint64("gasLimit").Get(), big.NewInt(f.Int64("gasPrice").Get()), f.Bytes("input").Get(), nil)
+	tx.From = from.String()
+
+	// sign transaction
+	tx.Sign(ethSigner, signer)
+
+	handler(ctx, tx)
+}
 
 func FuzzNetworkRawRPC(f *fuzz.F) {
 	msg := f.Bytes("msg").Get()
