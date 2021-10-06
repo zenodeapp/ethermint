@@ -187,12 +187,12 @@ func New(t *testing.T, cfg Config) *Network {
 	}
 	lock.Lock()
 
-	baseDir := "/tmp/test"
+	var baseDir string
 
 	if t != nil {
 		bD, err := ioutil.TempDir(t.TempDir(), cfg.ChainID)
 		require.NoError(t, err)
-		t.Logf("created temporary directory: %s", baseDir)
+		t.Logf("created temporary directory: %s", bD)
 		baseDir = bD
 	} else {
 		id := uuid.New()
