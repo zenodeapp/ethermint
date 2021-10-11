@@ -1,0 +1,4 @@
+ethermint:
+   language: go
+   build_tags:
+       - gofuzzbeta

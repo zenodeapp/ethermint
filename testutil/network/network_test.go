@@ -1,27 +1,25 @@
 //go:build norace
 // +build norace
 
-package network_test
+package network
 
 import (
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/suite"
-
-	"github.com/tharsis/ethermint/testutil/network"
 )
 
 type IntegrationTestSuite struct {
 	suite.Suite
 
-	network *network.Network
+	network *Network
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
 	s.T().Log("setting up integration test suite")
 
-	s.network = network.New(s.T(), network.DefaultConfig())
+	s.network = New(s.T(), network.DefaultConfig())
 	s.Require().NotNil(s.network)
 
 	_, err := s.network.WaitForHeight(1)
