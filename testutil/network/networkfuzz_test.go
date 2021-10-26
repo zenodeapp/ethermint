@@ -44,7 +44,6 @@ func FuzzABCI(f *testing.F) {
 	f.Fuzz(func(t *testing.T, msg []byte) {
 		eapp, ctx, _, _ := setupApp(t)
 		tmheader := ctx.BlockHeader()
-		tmheader.Height = tmheader.Height + 1
 		eapp.BeginBlock(abci.RequestBeginBlock{
 			Header: tmheader,
 		})
