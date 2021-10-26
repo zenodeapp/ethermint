@@ -16,6 +16,7 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -38,6 +39,23 @@ import (
 
 	"github.com/tendermint/tendermint/version"
 )
+
+func FuzzABCI(f *testing.F) {
+	f.Fuzz(func(t *testing.T, msg []byte) {
+		eapp, ctx, _, _ := setupApp(t)
+		tmheader := ctx.BlockHeader()
+		tmheader.Height = tmheader.Height + 1
+		eapp.BeginBlock(abci.RequestBeginBlock{
+			Header: tmheader,
+		})
+		eapp.DeliverTx(abci.RequestDeliverTx{
+			Tx: msg,
+		})
+		endBR := abci.RequestEndBlock{Height: tmheader.Height}
+		eapp.EndBlocker(ctx, endBR)
+		eapp.Commit()
+	})
+}
 
 func FuzzNetworkRPC(f *testing.F) {
 	f.Fuzz(func(t *testing.T, msg []byte) {
@@ -70,100 +88,105 @@ func FuzzNetworkRPC(f *testing.F) {
 	})
 }
 
+func setupApp(t *testing.T) (*app.EthermintApp, sdk.Context, keyring.Signer, common.Address) {
+	checkTx := false
+	// account key
+	priv, err := ethsecp256k1.GenerateKey()
+	require.NoError(t, err)
+	address := common.BytesToAddress(priv.PubKey().Address().Bytes())
+	signer := tests.NewSigner(priv)
+	from := address
+	// consensus key
+	priv, err = ethsecp256k1.GenerateKey()
+	require.NoError(t, err)
+	consAddress := sdk.ConsAddress(priv.PubKey().Address())
+
+	eapp := app.Setup(checkTx, nil)
+	coins := sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdk.NewInt(100000000000000)))
+	genesisState := app.ModuleBasics.DefaultGenesis(eapp.AppCodec())
+	b32address := sdk.MustBech32ifyAddressBytes(sdk.GetConfig().GetBech32AccountAddrPrefix(), priv.PubKey().Address().Bytes())
+	balances := []banktypes.Balance{
+		{
+			Address: b32address,
+			Coins:   coins,
+		},
+		{
+			Address: eapp.AccountKeeper.GetModuleAddress(authtypes.FeeCollectorName).String(),
+			Coins:   coins,
+		},
+	}
+	// update total supply
+	bankGenesis := banktypes.NewGenesisState(banktypes.DefaultGenesisState().Params, balances, sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdk.NewInt(200000000000000))), []banktypes.Metadata{})
+	genesisState[banktypes.ModuleName] = eapp.AppCodec().MustMarshalJSON(bankGenesis)
+
+	stateBytes, err := tmjson.MarshalIndent(genesisState, "", " ")
+	require.NoError(t, err)
+
+	// Initialize the chain
+	eapp.InitChain(
+		abci.RequestInitChain{
+			ChainId:         "ethermint_9000-1",
+			Validators:      []abci.ValidatorUpdate{},
+			ConsensusParams: simapp.DefaultConsensusParams,
+			AppStateBytes:   stateBytes,
+		},
+	)
+
+	ctx := eapp.BaseApp.NewContext(checkTx, tmproto.Header{
+		Height:          1,
+		ChainID:         "ethermint_9000-1",
+		Time:            time.Now().UTC(),
+		ProposerAddress: consAddress.Bytes(),
+		Version: tmversion.Consensus{
+			Block: version.BlockProtocol,
+		},
+		LastBlockId: tmproto.BlockID{
+			Hash: tmhash.Sum([]byte("block_id")),
+			PartSetHeader: tmproto.PartSetHeader{
+				Total: 11,
+				Hash:  tmhash.Sum([]byte("partset_header")),
+			},
+		},
+		AppHash:            tmhash.Sum([]byte("app")),
+		DataHash:           tmhash.Sum([]byte("data")),
+		EvidenceHash:       tmhash.Sum([]byte("evidence")),
+		ValidatorsHash:     tmhash.Sum([]byte("validators")),
+		NextValidatorsHash: tmhash.Sum([]byte("next_validators")),
+		ConsensusHash:      tmhash.Sum([]byte("consensus")),
+		LastResultsHash:    tmhash.Sum([]byte("last_result")),
+	})
+	eapp.EvmKeeper.WithContext(ctx)
+
+	queryHelper := baseapp.NewQueryServerTestHelper(ctx, eapp.InterfaceRegistry())
+	types.RegisterQueryServer(queryHelper, eapp.EvmKeeper)
+
+	acc := &ethermint.EthAccount{
+		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(address.Bytes()), nil, 0, 0),
+		CodeHash:    common.BytesToHash(crypto.Keccak256(nil)).String(),
+	}
+
+	eapp.AccountKeeper.SetAccount(ctx, acc)
+
+	valAddr := sdk.ValAddress(address.Bytes())
+	validator, err := stakingtypes.NewValidator(valAddr, priv.PubKey(), stakingtypes.Description{})
+	require.NoError(t, err)
+
+	err = eapp.StakingKeeper.SetValidatorByConsAddr(ctx, validator)
+	require.NoError(t, err)
+	err = eapp.StakingKeeper.SetValidatorByConsAddr(ctx, validator)
+	require.NoError(t, err)
+	eapp.StakingKeeper.SetValidator(ctx, validator)
+
+	return eapp, ctx, signer, from
+}
+
 func FuzzEVMHandler(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, amount1 int64, gasLimit1 uint64, gasPrice1 int64, input1 []byte,
 		amount2 int64, nonce2 uint64, gasLimit2 uint64, gasPrice2 int64, input2 []byte,
 		amount3 int64, gasLimit3 uint64, gasPrice3 int64, input3 []byte) {
 
-		checkTx := false
-
-		// account key
-		priv, err := ethsecp256k1.GenerateKey()
-		require.NoError(t, err)
-		address := common.BytesToAddress(priv.PubKey().Address().Bytes())
-		signer := tests.NewSigner(priv)
-		from := address
-		// consensus key
-		priv, err = ethsecp256k1.GenerateKey()
-		require.NoError(t, err)
-		consAddress := sdk.ConsAddress(priv.PubKey().Address())
-
-		eapp := app.Setup(checkTx, nil)
-		coins := sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdk.NewInt(100000000000000)))
-		genesisState := app.ModuleBasics.DefaultGenesis(eapp.AppCodec())
-		b32address := sdk.MustBech32ifyAddressBytes(sdk.GetConfig().GetBech32AccountAddrPrefix(), priv.PubKey().Address().Bytes())
-		balances := []banktypes.Balance{
-			{
-				Address: b32address,
-				Coins:   coins,
-			},
-			{
-				Address: eapp.AccountKeeper.GetModuleAddress(authtypes.FeeCollectorName).String(),
-				Coins:   coins,
-			},
-		}
-		// update total supply
-		bankGenesis := banktypes.NewGenesisState(banktypes.DefaultGenesisState().Params, balances, sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdk.NewInt(200000000000000))), []banktypes.Metadata{})
-		genesisState[banktypes.ModuleName] = eapp.AppCodec().MustMarshalJSON(bankGenesis)
-
-		stateBytes, err := tmjson.MarshalIndent(genesisState, "", " ")
-		require.NoError(t, err)
-
-		// Initialize the chain
-		eapp.InitChain(
-			abci.RequestInitChain{
-				ChainId:         "ethermint_9000-1",
-				Validators:      []abci.ValidatorUpdate{},
-				ConsensusParams: simapp.DefaultConsensusParams,
-				AppStateBytes:   stateBytes,
-			},
-		)
-
-		ctx := eapp.BaseApp.NewContext(checkTx, tmproto.Header{
-			Height:          1,
-			ChainID:         "ethermint_9000-1",
-			Time:            time.Now().UTC(),
-			ProposerAddress: consAddress.Bytes(),
-			Version: tmversion.Consensus{
-				Block: version.BlockProtocol,
-			},
-			LastBlockId: tmproto.BlockID{
-				Hash: tmhash.Sum([]byte("block_id")),
-				PartSetHeader: tmproto.PartSetHeader{
-					Total: 11,
-					Hash:  tmhash.Sum([]byte("partset_header")),
-				},
-			},
-			AppHash:            tmhash.Sum([]byte("app")),
-			DataHash:           tmhash.Sum([]byte("data")),
-			EvidenceHash:       tmhash.Sum([]byte("evidence")),
-			ValidatorsHash:     tmhash.Sum([]byte("validators")),
-			NextValidatorsHash: tmhash.Sum([]byte("next_validators")),
-			ConsensusHash:      tmhash.Sum([]byte("consensus")),
-			LastResultsHash:    tmhash.Sum([]byte("last_result")),
-		})
-		eapp.EvmKeeper.WithContext(ctx)
-
-		queryHelper := baseapp.NewQueryServerTestHelper(ctx, eapp.InterfaceRegistry())
-		types.RegisterQueryServer(queryHelper, eapp.EvmKeeper)
-
-		acc := &ethermint.EthAccount{
-			BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(address.Bytes()), nil, 0, 0),
-			CodeHash:    common.BytesToHash(crypto.Keccak256(nil)).String(),
-		}
-
-		eapp.AccountKeeper.SetAccount(ctx, acc)
-
-		valAddr := sdk.ValAddress(address.Bytes())
-		validator, err := stakingtypes.NewValidator(valAddr, priv.PubKey(), stakingtypes.Description{})
-		require.NoError(t, err)
-
-		err = eapp.StakingKeeper.SetValidatorByConsAddr(ctx, validator)
-		require.NoError(t, err)
-		err = eapp.StakingKeeper.SetValidatorByConsAddr(ctx, validator)
-		require.NoError(t, err)
-		eapp.StakingKeeper.SetValidator(ctx, validator)
+		eapp, ctx, signer, from := setupApp(t)
 
 		ethSigner := ethtypes.LatestSignerForChainID(eapp.EvmKeeper.ChainID())
 		handler := evm.NewHandler(eapp.EvmKeeper)
