@@ -89,7 +89,7 @@ func FuzzEVMHandler(f *testing.F) {
 		require.NoError(t, err)
 		consAddress := sdk.ConsAddress(priv.PubKey().Address())
 
-		eapp := app.Setup(checkTx)
+		eapp := app.Setup(checkTx, nil)
 		coins := sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdk.NewInt(100000000000000)))
 		genesisState := app.ModuleBasics.DefaultGenesis(eapp.AppCodec())
 		b32address := sdk.MustBech32ifyAddressBytes(sdk.GetConfig().GetBech32AccountAddrPrefix(), priv.PubKey().Address().Bytes())
