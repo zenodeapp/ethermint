@@ -4,7 +4,7 @@
 package network
 
 import (
-	//	"context"
+	"context"
 	"math/big"
 	"testing"
 	"time"
@@ -54,6 +54,10 @@ func FuzzABCI(f *testing.F) {
 		eapp.EndBlocker(ctx, endBR)
 		eapp.Commit()
 	})
+}
+
+func FuzzNetworkRPC(f *testing.F) {
+	FuzzABCI(f)
 }
 
 // FIXME: github.com/tharsis/ethermint/testutil/network.startInProcess seems incorrect now
