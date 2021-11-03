@@ -889,7 +889,7 @@ func (e *EVMBackend) RPCMinGasPrice() int64 {
 func (e *EVMBackend) ChainConfig() *params.ChainConfig {
 	params, err := e.queryClient.Params(e.ctx, &evmtypes.QueryParamsRequest{})
 	if err != nil {
-		return nil
+		return evmtypes.DefaultChainConfig().EthereumConfig(e.chainID)
 	}
 
 	return params.Params.ChainConfig.EthereumConfig(e.chainID)
