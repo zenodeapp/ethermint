@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	jsonrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"google.golang.org/grpc"
@@ -169,7 +168,6 @@ type (
 		Address         sdk.AccAddress
 		ValAddress      sdk.ValAddress
 		RPCClient       tmclient.Client
-		JSONRPCClient   *ethclient.Client
 
 		tmNode  *node.Node
 		api     *api.Server
