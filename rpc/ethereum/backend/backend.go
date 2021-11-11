@@ -244,6 +244,14 @@ func (e *EVMBackend) EthBlockFromTendermint(
 			}
 
 			hash := ethMsg.AsTransaction().Hash()
+
+			// check tx exists on EVM
+			_, err := e.GetTxByEthHash(hash)
+			if err != nil {
+				e.logger.Debug("failed to query eth tx hash", "hash", hash.Hex(), "error", err.Error())
+				continue
+			}
+
 			if !fullTx {
 				ethRPCTxs = append(ethRPCTxs, hash)
 				continue
