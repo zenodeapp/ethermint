@@ -30,6 +30,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tharsis/ethermint/crypto/hd"
 	"github.com/tharsis/ethermint/rpc/ethereum/backend"
 	rpctypes "github.com/tharsis/ethermint/rpc/ethereum/types"
@@ -268,7 +269,8 @@ func (e *PublicAPI) GetBlockTransactionCountByHash(hash common.Hash) *hexutil.Ui
 		return nil
 	}
 
-	n := hexutil.Uint(len(resBlock.Block.Txs))
+	ethMsgs := e.getEthereumMsgFromTendermintBlock(resBlock)
+	n := hexutil.Uint(len(ethMsgs))
 	return &n
 }
 
@@ -286,7 +288,8 @@ func (e *PublicAPI) GetBlockTransactionCountByNumber(blockNum rpctypes.BlockNumb
 		return nil
 	}
 
-	n := hexutil.Uint(len(resBlock.Block.Txs))
+	ethMsgs := e.getEthereumMsgFromTendermintBlock(resBlock)
+	n := hexutil.Uint(len(ethMsgs))
 	return &n
 }
 
@@ -519,23 +522,13 @@ func (e *PublicAPI) GetTransactionByBlockHashAndIndex(hash common.Hash, idx hexu
 	}
 
 	i := int(idx)
-	if i >= len(resBlock.Block.Txs) {
+	ethMsgs := e.getEthereumMsgFromTendermintBlock(resBlock)
+	if i >= len(ethMsgs) {
 		e.logger.Debug("block txs index out of bound", "index", i)
 		return nil, nil
 	}
 
-	txBz := resBlock.Block.Txs[i]
-	tx, err := e.clientCtx.TxConfig.TxDecoder()(txBz)
-	if err != nil {
-		e.logger.Debug("decoding failed", "error", err.Error())
-		return nil, fmt.Errorf("failed to decode tx: %w", err)
-	}
-
-	msg, err := evmtypes.UnwrapEthereumMsg(&tx)
-	if err != nil {
-		e.logger.Debug("invalid tx", "error", err.Error())
-		return nil, err
-	}
+	msg := ethMsgs[i]
 
 	return rpctypes.NewTransactionFromMsg(
 		msg,
@@ -562,23 +555,13 @@ func (e *PublicAPI) GetTransactionByBlockNumberAndIndex(blockNum rpctypes.BlockN
 	}
 
 	i := int(idx)
-	if i >= len(resBlock.Block.Txs) {
+	ethMsgs := e.getEthereumMsgFromTendermintBlock(resBlock)
+	if i >= len(ethMsgs) {
 		e.logger.Debug("block txs index out of bound", "index", i)
 		return nil, nil
 	}
 
-	txBz := resBlock.Block.Txs[i]
-	tx, err := e.clientCtx.TxConfig.TxDecoder()(txBz)
-	if err != nil {
-		e.logger.Debug("decoding failed", "error", err.Error())
-		return nil, fmt.Errorf("failed to decode tx: %w", err)
-	}
-
-	msg, err := evmtypes.UnwrapEthereumMsg(&tx)
-	if err != nil {
-		e.logger.Debug("invalid tx", "error", err.Error())
-		return nil, err
-	}
+	msg := ethMsgs[i]
 
 	return rpctypes.NewTransactionFromMsg(
 		msg,
@@ -840,4 +823,37 @@ func (e *PublicAPI) getBlockNumber(blockNrOrHash rpctypes.BlockNumberOrHash) (rp
 	default:
 		return rpctypes.EthEarliestBlockNumber, nil
 	}
+}
+
+
+func (e *PublicAPI) getEthereumMsgFromTendermintBlock(block *ctypes.ResultBlock) []*evmtypes.MsgEthereumTx {
+	result := []*evmtypes.MsgEthereumTx{}
+
+	for _, tx := range block.Block.Txs {
+		tx, err := e.clientCtx.TxConfig.TxDecoder()(tx)
+		if err != nil {
+			e.logger.Debug("failed to decode transaction in block", "height", block.Block.Height, "error", err.Error())
+			continue
+		}
+
+		for _, msg := range tx.GetMsgs() {
+			ethMsg, ok := msg.(*evmtypes.MsgEthereumTx)
+
+			if !ok {
+				continue
+			}
+
+			hash := ethMsg.AsTransaction().Hash()
+			// check tx exists on EVM
+			_, err := e.backend.GetTxByEthHash(hash)
+			if err != nil {
+				e.logger.Debug("failed to query eth tx hash", "hash", hash.Hex(), "error", err.Error())
+				continue
+			}
+
+			result = append(result, ethMsg)
+		}
+	}
+
+	return result
 }
