@@ -31,6 +31,7 @@ import (
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	"github.com/tharsis/ethermint/rpc"
+	ethrpc "github.com/tharsis/ethermint/rpc/ethereum/namespaces/eth"
 	ethsrv "github.com/tharsis/ethermint/server"
 	ethermint "github.com/tharsis/ethermint/types"
 )
@@ -127,6 +128,10 @@ func startInProcess(cfg Config, val *Validator) error {
 		for _, api := range apis {
 			if err := val.jsonRPC.RegisterName(api.Namespace, api.Service); err != nil {
 				return fmt.Errorf("failed to register JSON-RPC namespace %s: %w", api.Namespace, err)
+			}
+			service, ok := api.Service.(*ethrpc.PublicAPI)
+			if ok {
+				val.EthRPCAPI = service
 			}
 		}
 

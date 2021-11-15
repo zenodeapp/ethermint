@@ -52,6 +52,7 @@ import (
 	"github.com/tharsis/ethermint/app"
 	"github.com/tharsis/ethermint/crypto/hd"
 	"github.com/tharsis/ethermint/encoding"
+	ethrpc "github.com/tharsis/ethermint/rpc/ethereum/namespaces/eth"
 	srvconfig "github.com/tharsis/ethermint/server/config"
 	ethermint "github.com/tharsis/ethermint/types"
 )
@@ -170,6 +171,7 @@ type (
 		ValAddress      sdk.ValAddress
 		RPCClient       tmclient.Client
 		JSONRPCClient   *ethclient.Client
+		EthRPCAPI       *ethrpc.PublicAPI
 
 		tmNode  *node.Node
 		api     *api.Server

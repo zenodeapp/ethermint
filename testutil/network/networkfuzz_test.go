@@ -4,12 +4,12 @@
 package network
 
 import (
-	"context"
+	// "context"
 	"math/big"
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/ethclient"
+	// "github.com/ethereum/go-ethereum/ethclient"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -69,28 +69,29 @@ func FuzzNetworkRPC(f *testing.F) {
 				t.Log("failed to start up the network")
 				testnetwork.Cleanup()
 			} else {
-				client, err := ethclient.Dial(testnetwork.Validators[0].JSONRPCAddress)
+				// client, err := ethclient.Dial(testnetwork.Validators[0].JSONRPCAddress)
+				// if err != nil {
+				// 	t.Log("failed to create a client")
+				// } else {
+				// 	client.SendTransaction(context.Background(), ethjson)
+				testnetwork.Validators[0].EthRPCAPI.SendRawTransaction(msg)
+				h, err := testnetwork.WaitForHeightWithTimeout(10, time.Minute)
 				if err != nil {
-					t.Log("failed to create a client")
-				} else {
-					client.SendTransaction(context.Background(), ethjson)
-					h, err := testnetwork.WaitForHeightWithTimeout(10, time.Minute)
-					if err != nil {
-						testnetwork.Cleanup()
-						t.Fatalf("expected to reach 10 blocks; got %d", h)
-					}
-					latestHeight, err := testnetwork.LatestHeight()
-					if err != nil {
-						testnetwork.Cleanup()
-						t.Fatalf("latest height failed")
-					}
-					if latestHeight < h {
-						testnetwork.Cleanup()
-						t.Errorf("latestHeight should be greater or equal to")
-					}
+					testnetwork.Cleanup()
+					t.Fatalf("expected to reach 10 blocks; got %d", h)
 				}
-				testnetwork.Cleanup()
+				latestHeight, err := testnetwork.LatestHeight()
+				if err != nil {
+					testnetwork.Cleanup()
+					t.Fatalf("latest height failed")
+				}
+				if latestHeight < h {
+					testnetwork.Cleanup()
+					t.Errorf("latestHeight should be greater or equal to")
+				}
 			}
+			testnetwork.Cleanup()
+			// }
 		}
 	})
 }
