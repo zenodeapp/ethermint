@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"math/big"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -129,8 +130,10 @@ func EthTransactionsFromTendermint(clientCtx client.Context, txs []tmtypes.Tx) (
 }
 
 // BlockMaxGasFromConsensusParams returns the gas limit for the latest block from the chain consensus params.
-func BlockMaxGasFromConsensusParams(ctx context.Context, clientCtx client.Context) (int64, error) {
-	resConsParams, err := clientCtx.Client.ConsensusParams(ctx, nil)
+func BlockMaxGasFromConsensusParams(goCtx context.Context, clientCtx client.Context) (int64, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	blockHeight := ctx.BlockHeight()
+	resConsParams, err := clientCtx.Client.ConsensusParams(goCtx, &blockHeight)
 	if err != nil {
 		return int64(^uint32(0)), err
 	}
