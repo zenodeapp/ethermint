@@ -128,7 +128,7 @@ func EthTransactionsFromTendermint(clientCtx client.Context, txs []tmtypes.Tx) (
 	return transactionHashes, gasUsed, nil
 }
 
-// BlockMaxGasFromConsensusParams returns the gas limit for the latest block from the chain consensus params.
+// BlockMaxGasFromConsensusParams returns the gas limit for the current block from the chain consensus params.
 func BlockMaxGasFromConsensusParams(ctx context.Context, clientCtx client.Context, height *int64) (int64, error) {
 	resConsParams, err := clientCtx.Client.ConsensusParams(ctx, height)
 	if err != nil {
