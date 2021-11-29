@@ -12,7 +12,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/rs/cors"
-
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
@@ -134,6 +133,9 @@ func startInProcess(cfg Config, val *Validator) error {
 				val.EthRPCAPI = service
 			}
 		}
+		client := jsonrpc.DialInProc(val.jsonRPC)
+		val.RawClient = client
+		// val.JSONRPCClient = ethclient.NewClient(client)
 
 		r := mux.NewRouter()
 		r.HandleFunc("/", val.jsonRPC.ServeHTTP).Methods("POST")

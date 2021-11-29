@@ -171,6 +171,7 @@ type (
 		ValAddress      sdk.ValAddress
 		RPCClient       tmclient.Client
 		JSONRPCClient   *ethclient.Client
+		RawClient       *jsonrpc.Client
 		EthRPCAPI       *ethrpc.PublicAPI
 
 		tmNode  *node.Node

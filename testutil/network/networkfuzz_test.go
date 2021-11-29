@@ -58,6 +58,25 @@ func FuzzABCI(f *testing.F) {
 	})
 }
 
+func FuzzNetworkAnyRPC(f *testing.F) {
+	testnetwork := NewMini()
+	f.Fuzz(func(t *testing.T, method string, params []byte) {
+
+		_, err := testnetwork.WaitForHeight(1)
+		if err != nil {
+			t.Log("failed to start up the network")
+			testnetwork.Cleanup()
+		} else {
+			testnetwork.Validators[0].RawClient.CallRaw(nil, method, params)
+			err := testnetwork.WaitForNextBlock()
+			if err != nil {
+				testnetwork.Cleanup()
+				t.Fatalf("expected to reach the next block %v", err)
+			}
+		}
+	})
+}
+
 func FuzzNetworkRPC(f *testing.F) {
 	f.Fuzz(func(t *testing.T, msg []byte) {
 		ethjson := new(ethtypes.Transaction)
