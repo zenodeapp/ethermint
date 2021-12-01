@@ -60,6 +60,50 @@ func FuzzABCI(f *testing.F) {
 
 func FuzzNetworkAnyRPC(f *testing.F) {
 	testnetwork := NewMini()
+	methods := []string{
+		"eth_getBlockByHash",
+		"eth_getBlockByNumber",
+		"eth_getBlockTransactionCountByHash",
+		"eth_getBlockTransactionCountByNumber",
+		"eth_getUncleCountByBlockHash",
+		"eth_getUncleCountByBlockNumber",
+		"eth_protocolVersion",
+		"eth_syncing",
+		"eth_coinbase",
+		"eth_accounts",
+		"eth_blockNumber",
+		"eth_call",
+		"eth_estimateGas",
+		"eth_gasPrice",
+		"eth_feeHistory",
+		"eth_newFilter",
+		"eth_newBlockFilter",
+		"eth_newPendingTransactionFilter",
+		"eth_uninstallFilter",
+		"eth_getFilterChanges",
+		"eth_getFilterLogs",
+		"eth_getLogs",
+		"eth_mining",
+		"eth_hashrate",
+		"eth_getWork",
+		"eth_submitWork",
+		"eth_submitHashrate",
+		"eth_sign",
+		"eth_signTransaction",
+		"eth_getBalance",
+		"eth_getStorageAt",
+		"eth_getTransactionCount",
+		"eth_getCode",
+		"eth_sendTransaction",
+		"eth_sendRawTransaction",
+		"eth_getTransactionByHash",
+		"eth_getTransactionByBlockHashAndIndex",
+		"eth_getTransactionByBlockNumberAndIndex",
+		"eth_getTransactionReceipt",
+	}
+	for _, method := range methods {
+		f.Add(method, []byte{})
+	}
 	f.Fuzz(func(t *testing.T, method string, params []byte) {
 
 		_, err := testnetwork.WaitForHeight(1)
