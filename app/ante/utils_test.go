@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/stretchr/testify/suite"
@@ -23,6 +24,7 @@ import (
 	ante "github.com/tharsis/ethermint/app/ante"
 	"github.com/tharsis/ethermint/encoding"
 	"github.com/tharsis/ethermint/tests"
+	"github.com/tharsis/ethermint/x/evm/statedb"
 	evmtypes "github.com/tharsis/ethermint/x/evm/types"
 	feemarkettypes "github.com/tharsis/ethermint/x/feemarket/types"
 
@@ -38,6 +40,10 @@ type AnteTestSuite struct {
 	anteHandler  sdk.AnteHandler
 	ethSigner    ethtypes.Signer
 	dynamicTxFee bool
+}
+
+func (suite *AnteTestSuite) StateDB() *statedb.StateDB {
+	return statedb.New(suite.ctx, suite.app.EvmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(suite.ctx.HeaderHash().Bytes())))
 }
 
 func (suite *AnteTestSuite) SetupTest() {

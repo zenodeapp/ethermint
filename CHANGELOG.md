@@ -37,6 +37,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### State Machine Breaking
+
+- (evm) [tharsis#808](https://github.com/tharsis/ethermint/issues/808) increase nonce for reverted transaction, `PostTxProcessing` hooks no longer called for contract deployment contract.
+
 ## [v0.9.0] - 2021-12-01
 
 ### State Machine Breaking
