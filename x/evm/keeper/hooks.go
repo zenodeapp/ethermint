@@ -5,6 +5,7 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/tharsis/ethermint/x/evm/types"
 )
 
@@ -19,9 +20,9 @@ func NewMultiEvmHooks(hooks ...types.EvmHooks) MultiEvmHooks {
 }
 
 // PostTxProcessing delegate the call to underlying hooks
-func (mh MultiEvmHooks) PostTxProcessing(ctx sdk.Context, txHash common.Hash, logs []*ethtypes.Log) error {
+func (mh MultiEvmHooks) PostTxProcessing(ctx sdk.Context, stateDB vm.StateDB, txHash common.Hash, logs []*ethtypes.Log) error {
 	for i := range mh {
-		if err := mh[i].PostTxProcessing(ctx, txHash, logs); err != nil {
+		if err := mh[i].PostTxProcessing(ctx, stateDB, txHash, logs); err != nil {
 			return sdkerrors.Wrapf(err, "EVM hook %T failed", mh[i])
 		}
 	}
