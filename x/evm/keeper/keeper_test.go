@@ -28,6 +28,7 @@ import (
 	"github.com/tharsis/ethermint/server/config"
 	"github.com/tharsis/ethermint/tests"
 	ethermint "github.com/tharsis/ethermint/types"
+	"github.com/tharsis/ethermint/x/evm/statedb"
 	"github.com/tharsis/ethermint/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -145,7 +146,6 @@ func (suite *KeeperTestSuite) DoSetupTest(t require.TestingT) {
 		ConsensusHash:      tmhash.Sum([]byte("consensus")),
 		LastResultsHash:    tmhash.Sum([]byte("last_result")),
 	})
-	suite.app.EvmKeeper.WithContext(suite.ctx)
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
 	types.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
@@ -193,11 +193,14 @@ func (suite *KeeperTestSuite) Commit() {
 
 	// update ctx
 	suite.ctx = suite.app.BaseApp.NewContext(false, header)
-	suite.app.EvmKeeper.WithContext(suite.ctx)
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
 	types.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
 	suite.queryClient = types.NewQueryClient(queryHelper)
+}
+
+func (suite *KeeperTestSuite) StateDB() *statedb.StateDB {
+	return statedb.New(suite.ctx, suite.app.EvmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(suite.ctx.HeaderHash().Bytes())))
 }
 
 // DeployTestContract deploy a test erc20 contract and returns the contract address
@@ -221,13 +224,14 @@ func (suite *KeeperTestSuite) DeployTestContract(t require.TestingT, owner commo
 	})
 	require.NoError(t, err)
 
-	nonce := suite.app.EvmKeeper.GetNonce(suite.address)
+	acct, err := suite.app.EvmKeeper.GetAccountOrEmpty(suite.ctx, suite.address)
+	require.NoError(t, err)
 
 	var erc20DeployTx *types.MsgEthereumTx
 	if suite.dynamicTxFee {
 		erc20DeployTx = types.NewTxContract(
 			chainID,
-			nonce,
+			acct.Nonce,
 			nil,     // amount
 			res.Gas, // gasLimit
 			nil,     // gasPrice
@@ -239,7 +243,7 @@ func (suite *KeeperTestSuite) DeployTestContract(t require.TestingT, owner commo
 	} else {
 		erc20DeployTx = types.NewTxContract(
 			chainID,
-			nonce,
+			acct.Nonce,
 			nil,     // amount
 			res.Gas, // gasLimit
 			nil,     // gasPrice
@@ -255,7 +259,7 @@ func (suite *KeeperTestSuite) DeployTestContract(t require.TestingT, owner commo
 	rsp, err := suite.app.EvmKeeper.EthereumTx(ctx, erc20DeployTx)
 	require.NoError(t, err)
 	require.Empty(t, rsp.VmError)
-	return crypto.CreateAddress(suite.address, nonce)
+	return crypto.CreateAddress(suite.address, acct.Nonce)
 }
 
 func (suite *KeeperTestSuite) TransferERC20Token(t require.TestingT, contractAddr, from, to common.Address, amount *big.Int) *types.MsgEthereumTx {
@@ -272,13 +276,14 @@ func (suite *KeeperTestSuite) TransferERC20Token(t require.TestingT, contractAdd
 	})
 	require.NoError(t, err)
 
-	nonce := suite.app.EvmKeeper.GetNonce(suite.address)
+	acct, err := suite.app.EvmKeeper.GetAccountOrEmpty(suite.ctx, suite.address)
+	require.NoError(t, err)
 
 	var ercTransferTx *types.MsgEthereumTx
 	if suite.dynamicTxFee {
 		ercTransferTx = types.NewTx(
 			chainID,
-			nonce,
+			acct.Nonce,
 			&contractAddr,
 			nil,
 			res.Gas,
@@ -291,7 +296,7 @@ func (suite *KeeperTestSuite) TransferERC20Token(t require.TestingT, contractAdd
 	} else {
 		ercTransferTx = types.NewTx(
 			chainID,
-			nonce,
+			acct.Nonce,
 			&contractAddr,
 			nil,
 			res.Gas,
@@ -329,13 +334,14 @@ func (suite *KeeperTestSuite) DeployTestMessageCall(t require.TestingT) common.A
 	})
 	require.NoError(t, err)
 
-	nonce := suite.app.EvmKeeper.GetNonce(suite.address)
+	acct, err := suite.app.EvmKeeper.GetAccount(suite.ctx, suite.address)
+	require.NoError(t, err)
 
 	var erc20DeployTx *types.MsgEthereumTx
 	if suite.dynamicTxFee {
 		erc20DeployTx = types.NewTxContract(
 			chainID,
-			nonce,
+			acct.Nonce,
 			nil,     // amount
 			res.Gas, // gasLimit
 			nil,     // gasPrice
@@ -347,7 +353,7 @@ func (suite *KeeperTestSuite) DeployTestMessageCall(t require.TestingT) common.A
 	} else {
 		erc20DeployTx = types.NewTxContract(
 			chainID,
-			nonce,
+			acct.Nonce,
 			nil,     // amount
 			res.Gas, // gasLimit
 			nil,     // gasPrice
@@ -363,7 +369,7 @@ func (suite *KeeperTestSuite) DeployTestMessageCall(t require.TestingT) common.A
 	rsp, err := suite.app.EvmKeeper.EthereumTx(ctx, erc20DeployTx)
 	require.NoError(t, err)
 	require.Empty(t, rsp.VmError)
-	return crypto.CreateAddress(suite.address, nonce)
+	return crypto.CreateAddress(suite.address, acct.Nonce)
 }
 
 func TestKeeperTestSuite(t *testing.T) {
