@@ -23,7 +23,7 @@ func (suite AnteTestSuite) TestAnteHandler() {
 	suite.Require().NoError(acc.SetSequence(1))
 	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
-	suite.app.EvmKeeper.AddBalance(addr, big.NewInt(10000000000))
+	suite.app.EvmKeeper.SetBalance(suite.ctx, addr, big.NewInt(10000000000))
 
 	suite.app.FeeMarketKeeper.SetBaseFee(suite.ctx, big.NewInt(100))
 
@@ -314,7 +314,7 @@ func (suite AnteTestSuite) TestAnteHandlerWithDynamicTxFee() {
 	suite.Require().NoError(acc.SetSequence(1))
 	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
-	suite.app.EvmKeeper.AddBalance(addr, big.NewInt((ethparams.InitialBaseFee+10)*100000))
+	suite.app.EvmKeeper.SetBalance(suite.ctx, addr, big.NewInt((ethparams.InitialBaseFee+10)*100000))
 
 	testCases := []struct {
 		name      string

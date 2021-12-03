@@ -19,6 +19,7 @@ import (
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -33,6 +34,7 @@ import (
 	"github.com/tharsis/ethermint/tests"
 	ethermint "github.com/tharsis/ethermint/types"
 	"github.com/tharsis/ethermint/x/evm"
+	"github.com/tharsis/ethermint/x/evm/statedb"
 	"github.com/tharsis/ethermint/x/evm/types"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -136,7 +138,6 @@ func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 		ConsensusHash:      tmhash.Sum([]byte("consensus")),
 		LastResultsHash:    tmhash.Sum([]byte("last_result")),
 	})
-	suite.app.EvmKeeper.WithContext(suite.ctx)
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
 	types.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
@@ -170,6 +171,10 @@ func (suite *EvmTestSuite) SignTx(tx *types.MsgEthereumTx) {
 	tx.From = suite.from.String()
 	err := tx.Sign(suite.ethSigner, suite.signer)
 	suite.Require().NoError(err)
+}
+
+func (suite *EvmTestSuite) StateDB() *statedb.StateDB {
+	return statedb.New(suite.ctx, suite.app.EvmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(suite.ctx.HeaderHash().Bytes())))
 }
 
 func TestEvmTestSuite(t *testing.T) {
@@ -229,7 +234,6 @@ func (suite *EvmTestSuite) TestHandleMsgEthereumTx() {
 			suite.SetupTest() // reset
 			//nolint
 			tc.malleate()
-			suite.app.EvmKeeper.Snapshot()
 			res, err := suite.handler(suite.ctx, tx)
 
 			//nolint
@@ -281,16 +285,6 @@ func (suite *EvmTestSuite) TestHandlerLogs() {
 
 	suite.Require().Equal(len(txResponse.Logs), 1)
 	suite.Require().Equal(len(txResponse.Logs[0].Topics), 2)
-
-	tlogs := types.LogsToEthereum(txResponse.Logs)
-	for _, log := range tlogs {
-		suite.app.EvmKeeper.AddLogTransient(log)
-	}
-	suite.Require().NoError(err)
-
-	logs := suite.app.EvmKeeper.GetTxLogsTransient(tlogs[0].TxHash)
-
-	suite.Require().Equal(logs, tlogs)
 }
 
 func (suite *EvmTestSuite) TestDeployAndCallContract() {
@@ -509,13 +503,14 @@ func (suite *EvmTestSuite) TestErrorWhenDeployContract() {
 
 func (suite *EvmTestSuite) deployERC20Contract() common.Address {
 	k := suite.app.EvmKeeper
-	nonce := k.GetNonce(suite.from)
+	acct, err := k.GetAccountWithoutBalance(suite.ctx, suite.from)
+	suite.Require().NoError(err)
 	ctorArgs, err := types.ERC20Contract.ABI.Pack("", suite.from, big.NewInt(10000000000))
 	suite.Require().NoError(err)
 	msg := ethtypes.NewMessage(
 		suite.from,
 		nil,
-		nonce,
+		acct.Nonce,
 		big.NewInt(0),
 		2000000,
 		big.NewInt(1),
@@ -525,10 +520,10 @@ func (suite *EvmTestSuite) deployERC20Contract() common.Address {
 		nil,
 		true,
 	)
-	rsp, err := k.ApplyMessage(msg, nil, true)
+	rsp, err := k.ApplyMessage(suite.ctx, msg, nil, true)
 	suite.Require().NoError(err)
 	suite.Require().False(rsp.Failed())
-	return crypto.CreateAddress(suite.from, nonce)
+	return crypto.CreateAddress(suite.from, acct.Nonce)
 }
 
 // TestERC20TransferReverted checks:
@@ -570,17 +565,19 @@ func (suite *EvmTestSuite) TestERC20TransferReverted() {
 			k.SetHooks(tc.hooks)
 
 			// add some fund to pay gas fee
-			k.AddBalance(suite.from, big.NewInt(10000000000))
+			k.SetBalance(suite.ctx, suite.from, big.NewInt(10000000000))
 
 			contract := suite.deployERC20Contract()
 
 			data, err := types.ERC20Contract.ABI.Pack("transfer", suite.from, big.NewInt(10))
 			suite.Require().NoError(err)
 
-			nonce := k.GetNonce(suite.from)
+			before, err := k.GetAccount(suite.ctx, suite.from)
+			suite.Require().NoError(err)
+
 			tx := types.NewTx(
 				suite.chainID,
-				nonce,
+				before.Nonce,
 				&contract,
 				big.NewInt(0),
 				tc.gasLimit,
@@ -591,8 +588,6 @@ func (suite *EvmTestSuite) TestERC20TransferReverted() {
 				nil,
 			)
 			suite.SignTx(tx)
-
-			before := k.GetBalance(suite.from)
 
 			txData, err := types.UnpackTxData(tx.Data)
 			suite.Require().NoError(err)
@@ -605,7 +600,8 @@ func (suite *EvmTestSuite) TestERC20TransferReverted() {
 			suite.Require().True(res.Failed())
 			suite.Require().Equal(tc.expErr, res.VmError)
 
-			after := k.GetBalance(suite.from)
+			after, err := k.GetAccount(suite.ctx, suite.from)
+			suite.Require().NoError(err)
 
 			if tc.expErr == "out of gas" {
 				suite.Require().Equal(tc.gasLimit, res.GasUsed)
@@ -614,10 +610,10 @@ func (suite *EvmTestSuite) TestERC20TransferReverted() {
 			}
 
 			// check gas refund works: only deducted fee for gas used, rather than gas limit.
-			suite.Require().Equal(big.NewInt(int64(res.GasUsed)), new(big.Int).Sub(before, after))
+			suite.Require().Equal(big.NewInt(int64(res.GasUsed)), new(big.Int).Sub(before.Balance, after.Balance))
 
 			// transaction reverted, but nonce should be increased.
-			suite.Require().Equal(nonce+1, k.GetNonce(suite.from))
+			suite.Require().Equal(before.Nonce+1, after.Nonce)
 		})
 	}
 }
@@ -649,13 +645,15 @@ func (suite *EvmTestSuite) TestContractDeploymentRevert() {
 			// test with different hooks scenarios
 			k.SetHooks(tc.hooks)
 
-			nonce := k.GetNonce(suite.from)
+			before, err := k.GetAccount(suite.ctx, suite.from)
+			suite.Require().NoError(err)
+
 			ctorArgs, err := types.ERC20Contract.ABI.Pack("", suite.from, big.NewInt(0))
 			suite.Require().NoError(err)
 
 			tx := types.NewTx(
 				nil,
-				nonce,
+				before.Nonce,
 				nil, // to
 				nil, // amount
 				tc.gasLimit,
@@ -669,8 +667,11 @@ func (suite *EvmTestSuite) TestContractDeploymentRevert() {
 			suite.Require().NoError(err)
 			suite.Require().True(rsp.Failed())
 
+			after, err := k.GetAccount(suite.ctx, suite.from)
+			suite.Require().NoError(err)
+
 			// transaction reverted, but nonce should be increased.
-			suite.Require().Equal(nonce+1, k.GetNonce(suite.from))
+			suite.Require().Equal(before.Nonce+1, after.Nonce)
 		})
 	}
 }
@@ -678,13 +679,13 @@ func (suite *EvmTestSuite) TestContractDeploymentRevert() {
 // DummyHook implements EvmHooks interface
 type DummyHook struct{}
 
-func (dh *DummyHook) PostTxProcessing(ctx sdk.Context, txHash common.Hash, logs []*ethtypes.Log) error {
+func (dh *DummyHook) PostTxProcessing(ctx sdk.Context, stateDB vm.StateDB, txHash common.Hash, logs []*ethtypes.Log) error {
 	return nil
 }
 
 // FailureHook implements EvmHooks interface
 type FailureHook struct{}
 
-func (dh *FailureHook) PostTxProcessing(ctx sdk.Context, txHash common.Hash, logs []*ethtypes.Log) error {
+func (dh *FailureHook) PostTxProcessing(ctx sdk.Context, stateDB vm.StateDB, txHash common.Hash, logs []*ethtypes.Log) error {
 	return errors.New("mock error")
 }

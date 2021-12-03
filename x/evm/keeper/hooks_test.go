@@ -7,8 +7,10 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/tharsis/ethermint/x/evm/keeper"
+	"github.com/tharsis/ethermint/x/evm/statedb"
 	"github.com/tharsis/ethermint/x/evm/types"
 )
 
@@ -17,7 +19,7 @@ type LogRecordHook struct {
 	Logs []*ethtypes.Log
 }
 
-func (dh *LogRecordHook) PostTxProcessing(ctx sdk.Context, txHash common.Hash, logs []*ethtypes.Log) error {
+func (dh *LogRecordHook) PostTxProcessing(ctx sdk.Context, stateDB vm.StateDB, txHash common.Hash, logs []*ethtypes.Log) error {
 	dh.Logs = logs
 	return nil
 }
@@ -25,7 +27,7 @@ func (dh *LogRecordHook) PostTxProcessing(ctx sdk.Context, txHash common.Hash, l
 // FailureHook always fail
 type FailureHook struct{}
 
-func (dh FailureHook) PostTxProcessing(ctx sdk.Context, txHash common.Hash, logs []*ethtypes.Log) error {
+func (dh FailureHook) PostTxProcessing(ctx sdk.Context, stateDB vm.StateDB, txHash common.Hash, logs []*ethtypes.Log) error {
 	return errors.New("post tx processing failed")
 }
 
@@ -62,14 +64,20 @@ func (suite *KeeperTestSuite) TestEvmHooks() {
 		suite.app.EvmKeeper.SetHooks(keeper.NewMultiEvmHooks(hook))
 
 		k := suite.app.EvmKeeper
+		ctx := suite.ctx
 		txHash := common.BigToHash(big.NewInt(1))
-		k.SetTxHashTransient(txHash)
-		k.AddLog(&ethtypes.Log{
+		vmdb := statedb.New(ctx, k, statedb.NewTxConfig(
+			common.BytesToHash(ctx.HeaderHash().Bytes()),
+			txHash,
+			0,
+			0,
+		))
+
+		vmdb.AddLog(&ethtypes.Log{
 			Topics:  []common.Hash{},
 			Address: suite.address,
 		})
-		logs := k.GetTxLogsTransient(txHash)
-		result := k.PostTxProcessing(txHash, logs)
+		result := k.PostTxProcessing(ctx, vmdb, txHash, vmdb.Logs())
 
 		tc.expFunc(hook, result)
 	}
