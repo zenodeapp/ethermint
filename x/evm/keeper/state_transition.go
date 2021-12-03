@@ -197,45 +197,13 @@ func (k *Keeper) ApplyTransaction(tx *ethtypes.Transaction) (*types.MsgEthereumT
 	// available on the StateDB functions (eg: AddLog)
 	k.SetTxHashTransient(txHash)
 
-	// snapshot to contain the tx processing and post processing in same scope
-	var commit func()
-	if k.hooks != nil {
-		// Create a cache context to revert state when tx hooks fails,
-		// the cache context is only committed when both tx and hooks executed successfully.
-		// Didn't use `Snapshot` because the context stack has exponential complexity on certain operations,
-		// thus restricted to be used only inside `ApplyMessage`.
-		var cacheCtx sdk.Context
-		cacheCtx, commit = ctx.CacheContext()
-		k.WithContext(cacheCtx)
-		defer (func() {
-			k.WithContext(ctx)
-		})()
-	}
-
 	res, err := k.ApplyMessageWithConfig(msg, nil, true, cfg)
 	if err != nil {
 		return nil, sdkerrors.Wrap(err, "failed to apply ethereum core message")
 	}
 
 	res.Hash = txHash.Hex()
-
 	logs := k.GetTxLogsTransient(txHash)
-
-	if !res.Failed() {
-		// Only call hooks if tx executed successfully.
-		if err = k.PostTxProcessing(txHash, logs); err != nil {
-			// If hooks return error, revert the whole tx.
-			res.VmError = types.ErrPostTxProcessing.Error()
-			k.Logger(k.Ctx()).Error("tx post processing failed", "error", err)
-		} else if commit != nil {
-			// PostTxProcessing is successful, commit the cache context
-			commit()
-			ctx.EventManager().EmitEvents(k.Ctx().EventManager().Events())
-		}
-	}
-
-	// change to original context
-	k.WithContext(ctx)
 
 	// refund gas according to Ethereum gas accounting rules.
 	if err := k.RefundGas(msg, msg.Gas()-res.GasUsed, cfg.Params.EvmDenom); err != nil {
@@ -330,7 +298,7 @@ func (k *Keeper) ApplyMessageWithConfig(msg core.Message, tracer vm.Tracer, comm
 	// Should check again even if it is checked on Ante Handler, because eth_call don't go through Ante Handler.
 	if msg.Gas() < intrinsicGas {
 		// eth_estimateGas will check for this exact error
-		return nil, sdkerrors.Wrap(core.ErrIntrinsicGas, "apply message")
+		return nil, sdkerrors.Wrapf(core.ErrIntrinsicGas, "not enough intrinsicGas: %d < %d", msg.Gas(), intrinsicGas)
 	}
 	leftoverGas := msg.Gas() - intrinsicGas
 
@@ -345,7 +313,25 @@ func (k *Keeper) ApplyMessageWithConfig(msg core.Message, tracer vm.Tracer, comm
 	if contractCreation {
 		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data(), leftoverGas, msg.Value())
 	} else {
+		// Increment the nonce for the next transaction
+		k.SetNonce(msg.From(), k.GetNonce(sender.Address())+1)
+
+		// When hooks execution failed, we need to revert tx execution side effects, but not nonce increasement,
+		// but we can't do that for contract creation, because we can't seperate out the nonce increasement there.
+		var rev int
+		if k.hooks != nil {
+			rev = k.Snapshot()
+		}
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To(), msg.Data(), leftoverGas, msg.Value())
+		if k.hooks != nil && vmErr == nil {
+			txHash := k.GetTxHashTransient()
+			logs := k.GetTxLogsTransient(txHash)
+			if err := k.hooks.PostTxProcessing(k.Ctx(), txHash, logs); err != nil {
+				vmErr = sdkerrors.Wrap(types.ErrPostTxProcessing, err.Error())
+				// revert tx execution side-effects together.
+				k.RevertToSnapshot(rev)
+			}
+		}
 	}
 
 	refundQuotient := params.RefundQuotient

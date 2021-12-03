@@ -385,64 +385,6 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 	return next(ctx, tx, simulate)
 }
 
-// EthIncrementSenderSequenceDecorator increments the sequence of the signers.
-type EthIncrementSenderSequenceDecorator struct {
-	ak evmtypes.AccountKeeper
-}
-
-// NewEthIncrementSenderSequenceDecorator creates a new EthIncrementSenderSequenceDecorator.
-func NewEthIncrementSenderSequenceDecorator(ak evmtypes.AccountKeeper) EthIncrementSenderSequenceDecorator {
-	return EthIncrementSenderSequenceDecorator{
-		ak: ak,
-	}
-}
-
-// AnteHandle handles incrementing the sequence of the signer (i.e sender). If the transaction is a
-// contract creation, the nonce will be incremented during the transaction execution and not within
-// this AnteHandler decorator.
-func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
-	for _, msg := range tx.GetMsgs() {
-		msgEthTx, ok := msg.(*evmtypes.MsgEthereumTx)
-		if !ok {
-			return ctx, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "invalid transaction type %T, expected %T", tx, (*evmtypes.MsgEthereumTx)(nil))
-		}
-
-		txData, err := evmtypes.UnpackTxData(msgEthTx.Data)
-		if err != nil {
-			return ctx, sdkerrors.Wrap(err, "failed to unpack tx data")
-		}
-
-		// NOTE: on contract creation, the nonce is incremented within the EVM Create function during tx execution
-		// and not previous to the state transition ¯\_(ツ)_/¯
-		if txData.GetTo() == nil {
-			// contract creation, don't increment sequence on AnteHandler but on tx execution
-			// continue to the next item
-			continue
-		}
-
-		// increment sequence of all signers
-		for _, addr := range msg.GetSigners() {
-			acc := issd.ak.GetAccount(ctx, addr)
-
-			if acc == nil {
-				return ctx, sdkerrors.Wrapf(
-					sdkerrors.ErrUnknownAddress,
-					"account %s (%s) is nil", common.BytesToAddress(addr.Bytes()), addr,
-				)
-			}
-
-			if err := acc.SetSequence(acc.GetSequence() + 1); err != nil {
-				return ctx, sdkerrors.Wrapf(err, "failed to set sequence to %d", acc.GetSequence()+1)
-			}
-
-			issd.ak.SetAccount(ctx, acc)
-		}
-	}
-
-	// set the original gas meter
-	return next(ctx, tx, simulate)
-}
-
 // EthValidateBasicDecorator is adapted from ValidateBasicDecorator from cosmos-sdk, it ignores ErrNoSignatures
 type EthValidateBasicDecorator struct {
 	evmKeeper EVMKeeper
