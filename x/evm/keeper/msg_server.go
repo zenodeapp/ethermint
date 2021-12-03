@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -25,6 +26,7 @@ func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*t
 
 	sender := msg.From
 	tx := msg.AsTransaction()
+	txIndex := k.GetTxIndexTransient(ctx)
 
 	response, err := k.ApplyTransaction(ctx, tx)
 	if err != nil {
@@ -35,6 +37,8 @@ func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*t
 		sdk.NewAttribute(sdk.AttributeKeyAmount, tx.Value().String()),
 		// add event for ethereum transaction hash format
 		sdk.NewAttribute(types.AttributeKeyEthereumTxHash, response.Hash),
+		// add event for index of valid ethereum tx
+		sdk.NewAttribute(types.AttributeKeyTxIndex, strconv.FormatInt(int64(txIndex), 10)),
 	}
 
 	if len(ctx.TxBytes()) > 0 {
