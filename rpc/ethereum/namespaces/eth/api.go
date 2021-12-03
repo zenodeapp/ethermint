@@ -675,7 +675,7 @@ func (e *PublicAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.RPCTransac
 	return e.backend.GetTransactionByHash(hash)
 }
 
-// getTransactionByBlockHashAndIndex returns the transaction identified by hash and index.
+// getTransactionByBlockAndIndex is the common code shared by `GetTransactionByBlockNumberAndIndex` and `GetTransactionByBlockHashAndIndex`.
 func (e *PublicAPI) getTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, idx hexutil.Uint) (*rpctypes.RPCTransaction, error) {
 	var msg *evmtypes.MsgEthereumTx
 	// try /tx_search first
