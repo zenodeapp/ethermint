@@ -260,6 +260,22 @@ func (k *Keeper) GetAccountWithoutBalance(ctx sdk.Context, addr common.Address) 
 	}, nil
 }
 
+// GetNonce load nonce of eth account, returns error if not eth account.
+func (k *Keeper) GetNonce(ctx sdk.Context, addr common.Address) (uint64, error) {
+	cosmosAddr := sdk.AccAddress(addr.Bytes())
+	acct := k.accountKeeper.GetAccount(ctx, cosmosAddr)
+	if acct == nil {
+		return 0, nil
+	}
+
+	ethAcct, ok := acct.(*ethermint.EthAccount)
+	if !ok {
+		return 0, errors.New("not EthAccount")
+	}
+
+	return ethAcct.Sequence, nil
+}
+
 // GetBalance load account's balance of gas token
 func (k *Keeper) GetBalance(ctx sdk.Context, addr common.Address) *big.Int {
 	cosmosAddr := sdk.AccAddress(addr.Bytes())
