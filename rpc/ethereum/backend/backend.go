@@ -713,10 +713,12 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 		return nil, err
 	}
 
-	var txIndex *uint64
 	// Try to find txIndex from events
-	*txIndex, err = types.TxIndexFromEvents(res.TxResult.Events)
-	if err != nil {
+	found := false
+	txIndex, err := types.TxIndexFromEvents(res.TxResult.Events)
+	if err == nil {
+		found = true
+	} else {
 		// Fallback to find tx index by iterating all valid eth transactions
 		blockRes, err := e.clientCtx.Client.BlockResults(e.ctx, &block.Block.Height)
 		if err != nil {
@@ -725,12 +727,13 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 		msgs := e.GetEthereumMsgsFromTendermintBlock(block, blockRes)
 		for i := range msgs {
 			if msgs[i].Hash == hexTx {
-				*txIndex = uint64(i)
+				txIndex = uint64(i)
+				found = true
 				break
 			}
 		}
 	}
-	if txIndex == nil {
+	if !found {
 		return nil, errors.New("Can't find index of ethereum tx")
 	}
 
@@ -738,7 +741,7 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 		msg,
 		common.BytesToHash(block.BlockID.Hash.Bytes()),
 		uint64(res.Height),
-		*txIndex,
+		txIndex,
 		e.chainID,
 	)
 }
