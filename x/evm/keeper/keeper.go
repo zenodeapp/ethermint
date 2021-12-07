@@ -403,7 +403,7 @@ func (k *Keeper) SetAccount(ctx sdk.Context, addr common.Address, account stated
 	if err := ethAcct.SetSequence(account.Nonce); err != nil {
 		return err
 	}
-	ethAcct.CodeHash = common.Bytes2Hex(account.CodeHash)
+	ethAcct.CodeHash = common.BytesToHash(account.CodeHash).Hex()
 	k.accountKeeper.SetAccount(ctx, ethAcct)
 
 	return k.SetBalance(ctx, addr, account.Balance)
