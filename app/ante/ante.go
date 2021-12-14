@@ -78,14 +78,14 @@ func NewAnteHandler(
 			}
 		}
 
-		// Check there are no msgs of type evm.v1.MsgEthereumTx
+		// Check for msg that requires authentication
 		if ctx.IsCheckTx() {
 			for _, msg := range tx.GetMsgs() {
 				switch msg.(type) {
 				case *evmtypes.MsgEthereumTx:
 					return ctx, sdkerrors.Wrapf(
 						sdkerrors.ErrInvalidType,
-						"MsgEthereumTx needs to be within a ExtensionOptionsEthereumTx",
+						"MsgEthereumTx needs to be contained within a tx with ExtensionOptionsEthereumTx option",
 					)
 				}
 			}

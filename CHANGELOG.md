@@ -38,6 +38,13 @@ Ref: https://keepachangelog.com/en/1.0.0/
 # Unreleased
 
 ### Bug Fixes
+
+- [crypto-org-chain/ethermint#xx](https://github.com/tharsis/ethermint/pull/xx) add extra check in ante handlers
+- [tharsis#840](https://github.com/tharsis/ethermint/pull/840) empty topics shouldn't be encoded as nil
+
+## [v0.7.2-cronos-4] - 2021-11-30
+
+### Bug Fixes
 - [crypto-org-chain/ethermint#19](https://github.com/crypto-org-chain/ethermint/pull/19) revert tharsis#786 because it contains consensus breaking changes
 
 
