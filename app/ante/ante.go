@@ -24,7 +24,6 @@ import (
 
 const (
 	secp256k1VerifyCost uint64 = 21000
-	patchActivationHeight int64 = 600000
 )
 
 // NewAnteHandler returns an ante handler responsible for attempting to route an
@@ -79,14 +78,14 @@ func NewAnteHandler(
 			}
 		}
 
-		// Check that no msgs is type of evm.v1.MsgEthereumTx
-		if ctx.BlockHeight() >= patchActivationHeight {
+		// Check there are no msgs of type evm.v1.MsgEthereumTx
+		if ctx.IsCheckTx() {
 			for _, msg := range tx.GetMsgs() {
 				switch msg.(type) {
 				case *evmtypes.MsgEthereumTx:
 					return ctx, sdkerrors.Wrapf(
 						sdkerrors.ErrInvalidType,
-						"MsgEthereumTx needs to be within ExtensionOptionsEthereumTx",
+						"MsgEthereumTx needs to be within a ExtensionOptionsEthereumTx",
 					)
 				}
 			}
