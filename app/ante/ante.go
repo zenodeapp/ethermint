@@ -80,6 +80,18 @@ func NewAnteHandler(
 
 		// handle as totally normal Cosmos SDK tx
 
+		// Reject MsgEthereumTx here
+		if ctx.IsCheckTx() { // only fix checkTx to keep it non-breaking
+			for _, msg := range tx.GetMsgs() {
+				if _, ok := msg.(*evmtypes.MsgEthereumTx); ok {
+					return ctx, sdkerrors.Wrapf(
+						sdkerrors.ErrInvalidType,
+						"MsgEthereumTx needs to be contained within a tx with ExtensionOptionsEthereumTx option",
+					)
+				}
+			}
+		}
+
 		switch tx.(type) {
 		case sdk.Tx:
 			anteHandler = sdk.ChainAnteDecorators(

@@ -37,7 +37,22 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 # Unreleased
 
+## [v0.7.2-cronos-6] - 2021-12-17
+
 ### Bug Fixes
+
+- [crypto-org-chain/ethermint#]() reject invalid `MsgEthereumTx` wrapping tx in a non-breaking way
+
+## [v0.7.2-cronos-5] - 2021-12-16
+
+### Bug Fixes
+
+- [crypto-org-chain/ethermint#35](https://github.com/crypto-org-chain/ethermint/pull/35) fix empty topics in a non-breaking way
+
+## [v0.7.2-cronos-4] - 2021-11-30
+
+### Bug Fixes
+
 - [crypto-org-chain/ethermint#19](https://github.com/crypto-org-chain/ethermint/pull/19) revert tharsis#786 because it contains consensus breaking changes
 
 
