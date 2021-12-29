@@ -35,7 +35,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 # Changelog
 
-# Unreleased
+## Unreleased
+
+### Bug Fixes
+
+* (rpc) [crypto-org-chain#42](https://github.com/crypto-org-chain/ethermint/pull/42) Fix `eth_getLogs` when specify blockHash without address/topics, and limit the response size.
 
 ## [v0.7.2-cronos-6] - 2021-12-17
 
