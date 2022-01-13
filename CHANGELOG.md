@@ -41,6 +41,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 * (rpc) [crypto-org-chain#42](https://github.com/crypto-org-chain/ethermint/pull/42) Fix `eth_getLogs` when specify blockHash without address/topics, and limit the response size.
 
+### Bug Fixes
+
+- (rpc) [tharsis#900](https://github.com/tharsis/ethermint/pull/900) newPendingTransactions filter should return ethereum tx hash.
+
 ## [v0.7.2-cronos-6] - 2021-12-17
 
 ### Bug Fixes
