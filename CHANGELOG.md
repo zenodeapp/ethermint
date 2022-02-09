@@ -67,6 +67,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * (evm) [tharsis#901](https://github.com/tharsis/ethermint/pull/901) Support multiple MsgEthereumTx in single tx.
 * (config) [tharsis#908](https://github.com/tharsis/ethermint/pull/908) Add api.enable flag for Cosmos SDK Rest server
 * (feemarket) [tharsis#919](https://github.com/tharsis/ethermint/pull/919) Initialize baseFee in default genesis state.
+* (evm) [tharsis#932](https://github.com/tharsis/ethermint/pull/932) Fix base fee check logic in state transition.
 
 ### Bug Fixes
 
