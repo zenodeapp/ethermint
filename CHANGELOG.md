@@ -40,6 +40,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Bug Fixes
 
 * (rpc) [crypto-org-chain#42](https://github.com/crypto-org-chain/ethermint/pull/42) Fix `eth_getLogs` when specify blockHash without address/topics, and limit the response size.
+* (rpc) [tharsis#933](https://github.com/tharsis/ethermint/pull/933) Fix newPendingTransactions subscription deadlock when a Websocket client exits without unsubscribing and the node errors. (backport: #933)
 
 ### Bug Fixes
 
