@@ -268,7 +268,13 @@ func (e *PublicAPI) GetBlockTransactionCountByHash(hash common.Hash) *hexutil.Ui
 		return nil
 	}
 
-	ethMsgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock)
+	blockRes, err := e.clientCtx.Client.BlockResults(e.ctx, &resBlock.Block.Height)
+	if err != nil {
+		e.logger.Debug("block result not found", "height", resBlock.Block.Height)
+		return nil
+	}
+
+	ethMsgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock, blockRes)
 	n := hexutil.Uint(len(ethMsgs))
 	return &n
 }
@@ -287,7 +293,13 @@ func (e *PublicAPI) GetBlockTransactionCountByNumber(blockNum rpctypes.BlockNumb
 		return nil
 	}
 
-	ethMsgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock)
+	blockRes, err := e.clientCtx.Client.BlockResults(e.ctx, &resBlock.Block.Height)
+	if err != nil {
+		e.logger.Debug("block result not found", "height", resBlock.Block.Height)
+		return nil
+	}
+
+	ethMsgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock, blockRes)
 	n := hexutil.Uint(len(ethMsgs))
 	return &n
 }
@@ -527,8 +539,14 @@ func (e *PublicAPI) GetTransactionByBlockHashAndIndex(hash common.Hash, idx hexu
 		return nil, nil
 	}
 
+	blockRes, err := e.clientCtx.Client.BlockResults(e.ctx, &resBlock.Block.Height)
+	if err != nil {
+		e.logger.Debug("block result not found", "height", resBlock.Block.Height)
+		return nil, nil
+	}
+
 	i := int(idx)
-	ethMsgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock)
+	ethMsgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock, blockRes)
 	if i >= len(ethMsgs) {
 		e.logger.Debug("block txs index out of bound", "index", i)
 		return nil, nil
@@ -560,8 +578,14 @@ func (e *PublicAPI) GetTransactionByBlockNumberAndIndex(blockNum rpctypes.BlockN
 		return nil, nil
 	}
 
+	blockRes, err := e.clientCtx.Client.BlockResults(e.ctx, &resBlock.Block.Height)
+	if err != nil {
+		e.logger.Debug("block result not found", "height", blockNum.Int64())
+		return nil, nil
+	}
+
 	i := int(idx)
-	ethMsgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock)
+	ethMsgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock, blockRes)
 	if i >= len(ethMsgs) {
 		e.logger.Debug("block txs index out of bound", "index", i)
 		return nil, nil
@@ -644,7 +668,7 @@ func (e *PublicAPI) GetTransactionReceipt(hash common.Hash) (map[string]interfac
 
 	// get eth index based on block's txs
 	var txIndex uint64
-	msgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock)
+	msgs := e.backend.GetEthereumMsgsFromTendermintBlock(resBlock, blockRes)
 	for i := range msgs {
 		if msgs[i].Hash == hexTx {
 			txIndex = uint64(i)

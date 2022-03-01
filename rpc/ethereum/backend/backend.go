@@ -62,7 +62,7 @@ type Backend interface {
 	RPCMinGasPrice() int64
 	ChainConfig() *params.ChainConfig
 	SuggestGasTipCap() (*big.Int, error)
-	GetEthereumMsgsFromTendermintBlock(block *tmrpctypes.ResultBlock) []*evmtypes.MsgEthereumTx
+	GetEthereumMsgsFromTendermintBlock(block *tmrpctypes.ResultBlock, blockRes *tmrpctypes.ResultBlockResults) []*evmtypes.MsgEthereumTx
 }
 
 var _ Backend = (*EVMBackend)(nil)
@@ -587,7 +587,12 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 	}
 
 	var txIndex uint64
-	msgs := e.GetEthereumMsgsFromTendermintBlock(resBlock)
+	blockRes, err := e.clientCtx.Client.BlockResults(e.ctx, &resBlock.Block.Height)
+	if err != nil {
+		e.logger.Debug("block result not found", "height", res.Height, "error", err.Error())
+		return nil, nil
+	}
+	msgs := e.GetEthereumMsgsFromTendermintBlock(resBlock, blockRes)
 
 	for i := range msgs {
 		if msgs[i].Hash == hexTx {
@@ -822,10 +827,17 @@ func (e *EVMBackend) SuggestGasTipCap() (*big.Int, error) {
 
 // GetEthereumMsgsFromTendermintBlock returns all real MsgEthereumTxs from a Tendermint block.
 // It also ensures consistency over the correct txs indexes across RPC endpoints
-func (e *EVMBackend) GetEthereumMsgsFromTendermintBlock(block *tmrpctypes.ResultBlock) []*evmtypes.MsgEthereumTx {
+func (e *EVMBackend) GetEthereumMsgsFromTendermintBlock(block *tmrpctypes.ResultBlock, blockRes *tmrpctypes.ResultBlockResults) []*evmtypes.MsgEthereumTx {
 	var result []*evmtypes.MsgEthereumTx
 
-	for _, tx := range block.Block.Txs {
+	txResults := blockRes.TxsResults
+	for i, tx := range block.Block.Txs {
+		// check tx exists on EVM by cross checking with blockResults
+		if txResults[i].Code != 0 {
+			e.logger.Debug("invalid tx result code", "cosmos-hash", hexutil.Encode(tx.Hash()))
+			continue
+		}
+
 		tx, err := e.clientCtx.TxConfig.TxDecoder()(tx)
 		if err != nil {
 			e.logger.Debug("failed to decode transaction in block", "height", block.Block.Height, "error", err.Error())
