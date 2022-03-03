@@ -83,6 +83,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * (rpc) [tharsis#900](https://github.com/tharsis/ethermint/pull/900) newPendingTransactions filter return ethereum tx hash.
 * (rpc) [tharsis#933](https://github.com/tharsis/ethermint/pull/933) Fix newPendingTransactions subscription deadlock when a Websocket client exits without unsubscribing and the node errors.
 * (rpc) [#955](https://github.com/tharsis/ethermint/pull/955) Fix websocket server push duplicated messages to subscriber.
+* (rpc) [#970](https://github.com/tharsis/ethermint/pull/970) Fix unexpected nil reward values on `eth_feeHistory` response
 
 ## [v0.9.0] - 2021-12-01
 
