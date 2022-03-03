@@ -70,6 +70,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * (feemarket) [tharsis#919](https://github.com/tharsis/ethermint/pull/919) Initialize baseFee in default genesis state.
 * (evm) [tharsis#932](https://github.com/tharsis/ethermint/pull/932) Fix base fee check logic in state transition.
 * (log) [#948](https://github.com/tharsis/ethermint/pull/948) redirect go-ethereum's logs to cosmos-sdk logger.
+* (rpc) [#968](https://github.com/tharsis/ethermint/pull/968) Add some buffer to returned gas price to provide better default UX for client.
 
 ### Bug Fixes
 
