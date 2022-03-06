@@ -37,6 +37,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+
+* (rpc) [#970] (https://github.com/tharsis/ethermint/pull/970) Fix unexpected nil reward values on `eth_feeHistory` response
+
 ### API Breaking
 
 * (ante) [\#866](https://github.com/tharsis/ethermint/pull/866) `NewAnteHandler` constructor now receives a `HandlerOptions` field.
