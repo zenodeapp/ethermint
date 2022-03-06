@@ -44,6 +44,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 - (rpc) [tharsis#900](https://github.com/tharsis/ethermint/pull/900) newPendingTransactions filter should return ethereum tx hash.
 - (rpc) [tharsis#878](https://github.com/tharsis/ethermint/pull/878) Workaround to make GetBlock RPC api report correct block gas used.
 * (rpc) [#955](https://github.com/tharsis/ethermint/pull/955) Fix websocket server push duplicated messages to subscriber.
+* (ante) [tharsis#964](https://github.com/tharsis/ethermint/pull/964) add NewInfiniteGasMeterWithLimit for storing the user provided gas limit. Fixes block's consumed gas calculation in the block creation phase. (Modified to only fix check tx mode to avoid breaking consensus).
 
 ## [v0.7.2-cronos-6] - 2021-12-17
 

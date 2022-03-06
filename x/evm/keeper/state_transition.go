@@ -296,7 +296,7 @@ func (k *Keeper) ApplyMessage(evm *vm.EVM, msg core.Message, cfg *params.ChainCo
 	}
 	leftoverGas := msg.Gas() - intrinsicGas
 
-	// access list preparaion is moved from ante handler to here, because it's needed when `ApplyMessage` is called
+	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
 	if rules := cfg.Rules(big.NewInt(k.Ctx().BlockHeight())); rules.IsBerlin {
 		k.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())

@@ -259,6 +259,7 @@ func NewEthGasConsumeDecorator(evmKeeper EVMKeeper) EthGasConsumeDecorator {
 // - transaction's gas limit is lower than the intrinsic gas
 // - user doesn't have enough balance to deduct the transaction fees (gas_limit * gas_price)
 // - transaction or block gas meter runs out of gas
+// - sets the gas meter limit
 func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (newCtx sdk.Context, err error) {
 	// reset the refund gas value in the keeper for the current transaction
 	egcd.evmKeeper.ResetRefundTransient(ctx)
@@ -271,6 +272,7 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 	homestead := ethCfg.IsHomestead(blockHeight)
 	istanbul := ethCfg.IsIstanbul(blockHeight)
 	evmDenom := params.EvmDenom
+	gasWanted := uint64(0)
 
 	var events sdk.Events
 
@@ -287,6 +289,7 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 		if err != nil {
 			return ctx, stacktrace.Propagate(err, "failed to unpack tx data")
 		}
+		gasWanted += txData.GetGas()
 
 		fees, err := egcd.evmKeeper.DeductTxCostsFromUserBalance(
 			ctx,
@@ -315,6 +318,14 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 		// if current gas consumed is greater than the limit, this funcion panics and the error is recovered on the Baseapp
 		gasPool := sdk.NewGasMeter(blockGasLimit)
 		gasPool.ConsumeGas(ctx.GasMeter().GasConsumedToLimit(), "gas pool check")
+	}
+
+	// only fix the checkTx mode to avoid breaking consensus.
+	if ctx.IsCheckTx() {
+		// Set ctx.GasMeter with a limit of GasWanted (gasLimit)
+		gasConsumed := ctx.GasMeter().GasConsumed()
+		ctx = ctx.WithGasMeter(ethermint.NewInfiniteGasMeterWithLimit(gasWanted))
+		ctx.GasMeter().ConsumeGas(gasConsumed, "copy gas consumed")
 	}
 
 	// we know that we have enough gas on the pool to cover the intrinsic gas
