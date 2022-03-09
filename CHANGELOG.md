@@ -37,6 +37,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+
+- (rpc) [tharsis#979](https://github.com/tharsis/ethermint/pull/979) Add configurable timeouts to http server
+
 ### Bug Fixes
 
 * (rpc) [#970] (https://github.com/tharsis/ethermint/pull/970) Fix unexpected nil reward values on `eth_feeHistory` response
