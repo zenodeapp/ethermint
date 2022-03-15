@@ -43,6 +43,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 
+* (rpc) [tharsis#975](https://github.com/tharsis/ethermint/pull/975) Fix unexpected `nil` values for `reward`, returned by `EffectiveGasTipValue(blockBaseFee)` in the `eth_feeHistory` RPC method.
 * (rpc) [#970] (https://github.com/tharsis/ethermint/pull/970) Fix unexpected nil reward values on `eth_feeHistory` response
 
 ### API Breaking
