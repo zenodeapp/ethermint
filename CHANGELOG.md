@@ -53,6 +53,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 - [crypto-org-chain/ethermint#]() reject invalid `MsgEthereumTx` wrapping tx in a non-breaking way
 
+### Improvements
+- (rpc) [tharsis#988](https://github.com/tharsis/ethermint/pull/988) json-rpc server always use local rpc client
+
 ## [v0.7.2-cronos-5] - 2021-12-16
 
 ### Bug Fixes
