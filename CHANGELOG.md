@@ -41,6 +41,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 - (rpc) [tharsis#979](https://github.com/tharsis/ethermint/pull/979) Add configurable timeouts to http server
 - (rpc) [tharsis#988](https://github.com/tharsis/ethermint/pull/988) json-rpc server always use local rpc client
+* (ante) [tharsis#991](https://github.com/tharsis/ethermint/pull/991) Set an upper bound to gasWanted to prevent DoS attack.
 
 ### Bug Fixes
 
