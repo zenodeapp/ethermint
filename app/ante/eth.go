@@ -21,6 +21,8 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
+const MaxTxGasWanted uint64 = 500000
+
 // EVMKeeper defines the expected keeper interface used on the Eth AnteHandler
 type EVMKeeper interface {
 	vm.StateDB
@@ -273,7 +275,6 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 	istanbul := ethCfg.IsIstanbul(blockHeight)
 	evmDenom := params.EvmDenom
 	gasWanted := uint64(0)
-
 	var events sdk.Events
 
 	for i, msg := range tx.GetMsgs() {
@@ -289,7 +290,17 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 		if err != nil {
 			return ctx, stacktrace.Propagate(err, "failed to unpack tx data")
 		}
-		gasWanted += txData.GetGas()
+
+		if ctx.IsCheckTx() {
+			// We can't trust the tx gas limit, because we'll refund the unused gas.
+			if txData.GetGas() > MaxTxGasWanted {
+				gasWanted += MaxTxGasWanted
+			} else {
+				gasWanted += txData.GetGas()
+			}
+		} else {
+			gasWanted += txData.GetGas()
+		}
 
 		fees, err := egcd.evmKeeper.DeductTxCostsFromUserBalance(
 			ctx,
