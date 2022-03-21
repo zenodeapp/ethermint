@@ -37,6 +37,7 @@ func NewAnteHandler(
 	feeGrantKeeper authante.FeegrantKeeper,
 	channelKeeper channelkeeper.Keeper,
 	signModeHandler authsigning.SignModeHandler,
+	maxGasWanted uint64,
 ) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx, sim bool,
@@ -62,7 +63,7 @@ func NewAnteHandler(
 						NewEthSigVerificationDecorator(evmKeeper),
 						NewEthAccountVerificationDecorator(ak, bankKeeper, evmKeeper),
 						NewEthNonceVerificationDecorator(ak),
-						NewEthGasConsumeDecorator(evmKeeper),
+						NewEthGasConsumeDecorator(evmKeeper, maxGasWanted),
 						NewCanTransferDecorator(evmKeeper),
 						NewEthIncrementSenderSequenceDecorator(ak), // innermost AnteDecorator.
 					)

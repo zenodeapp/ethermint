@@ -6,6 +6,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/tharsis/ethermint/app/ante"
+	"github.com/tharsis/ethermint/server/config"
 	"github.com/tharsis/ethermint/tests"
 	evmtypes "github.com/tharsis/ethermint/x/evm/types"
 
@@ -195,7 +196,7 @@ func (suite AnteTestSuite) TestEthNonceVerificationDecorator() {
 }
 
 func (suite AnteTestSuite) TestEthGasConsumeDecorator() {
-	dec := ante.NewEthGasConsumeDecorator(suite.app.EvmKeeper)
+	dec := ante.NewEthGasConsumeDecorator(suite.app.EvmKeeper, config.DefaultMaxTxGasWanted)
 
 	addr := tests.GenerateAddress()
 

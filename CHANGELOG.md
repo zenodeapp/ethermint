@@ -48,6 +48,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * (evm) [\#529](https://github.com/tharsis/ethermint/issues/529) support return value on trace tx response.
 * (rpc) [tharsis#1006](https://github.com/tharsis/ethermint/pull/1006) Use `string` as the parameters type to correct ambiguous results.
 * (ante) [tharsis#991](https://github.com/tharsis/ethermint/pull/991) Set an upper bound to gasWanted to prevent DoS attack.
+* (ante) [tharsis#1004](https://github.com/tharsis/ethermint/pull/1004) make MaxTxGasWanted configurable.
 
 ## [v0.7.2-cronos-6] - 2021-12-17
 
