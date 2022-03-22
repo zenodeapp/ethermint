@@ -21,8 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
-const MaxTxGasWanted uint64 = 500000
-
 // EVMKeeper defines the expected keeper interface used on the Eth AnteHandler
 type EVMKeeper interface {
 	vm.StateDB
