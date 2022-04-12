@@ -46,6 +46,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * (rpc) [tharsis#1012](https://github.com/tharsis/ethermint/pull/1012) fix the tx hash in filter entries created by `eth_newPendingTransactionFilter`.
 * (rpc) [tharsis#1006](https://github.com/tharsis/ethermint/pull/1006) Use `string` as the parameters type to correct ambiguous results.
 * (rpc) [tharsis#1056](https://github.com/tharsis/ethermint/pull/1056) Make json-rpc namespaces extensible 
+* (deps) [tharsis#1046](https://github.com/tharsis/ethermint/pull/1046) Bump Cosmos SDK version to [`v0.45.3`](https://github.com/cosmos/cosmos-sdk/releases/tag/v0.45.3)
 
 ### Bug Fixes
 
