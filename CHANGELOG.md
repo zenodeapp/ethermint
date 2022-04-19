@@ -50,6 +50,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * (ante) [tharsis#991](https://github.com/tharsis/ethermint/pull/991) Set an upper bound to gasWanted to prevent DoS attack.
 * (ante) [tharsis#1004](https://github.com/tharsis/ethermint/pull/1004) make MaxTxGasWanted configurable.
 * (rpc) [tharsis#1012](https://github.com/tharsis/ethermint/pull/1012) fix the tx hash in filter entries created by `eth_newPendingTransactionFilter`.
+* (rpc) [tharsis#1056](https://github.com/tharsis/ethermint/pull/1056) Make json-rpc namespaces extensible
 
 ## [v0.7.2-cronos-6] - 2021-12-17
 
