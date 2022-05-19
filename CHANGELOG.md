@@ -40,6 +40,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Bug Fixes
 
 * (rpc) [tharsis#1059](https://github.com/tharsis/ethermint/pull/1059) Remove unnecessary event filtering logic on the `eth_baseFee` JSON-RPC endpoint.
+* (rpc) [tharsis#1082](https://github.com/tharsis/ethermint/pull/1082) fix gas price returned in getTransaction api.
 
 ### API Breaking
 

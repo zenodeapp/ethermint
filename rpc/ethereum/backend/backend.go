@@ -666,7 +666,7 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 					common.Hash{},
 					uint64(0),
 					uint64(0),
-					e.chainID,
+					nil,
 				)
 				if err != nil {
 					return nil, err
@@ -734,7 +734,7 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 		common.BytesToHash(block.BlockID.Hash.Bytes()),
 		uint64(res.Height),
 		txIndex,
-		e.chainID,
+		nil,
 	)
 }
 
