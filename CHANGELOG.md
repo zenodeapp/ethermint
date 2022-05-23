@@ -45,6 +45,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### API Breaking
 
 * (rpc) [tharsis#1068](https://github.com/tharsis/ethermint/pull/1068) Fix london hardfork check logic in json-rpc apis.
+- (rpc) [tharsis#1081](https://github.com/tharsis/ethermint/pull/1081) Deduplicate some json-rpc logic codes, cleanup several dead functions.
 
 ### Improvements
 
