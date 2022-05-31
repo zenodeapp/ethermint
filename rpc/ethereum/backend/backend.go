@@ -373,8 +373,8 @@ func (e *EVMBackend) EthBlockFromTendermint(
 
 	for _, txsResult := range resBlockResult.TxsResults {
 		// workaround for cosmos-sdk bug. https://github.com/cosmos/cosmos-sdk/issues/10832
-		if txsResult.GetCode() == 11 && txsResult.GetLog() == "no block gas left to run tx: out of gas" {
-			// block gas limit has exceeded, other txs must have failed for the same reason.
+		if ShouldIgnoreGasUsed(txsResult) {
+			// block gas limit has exceeded, other txs must have failed with same reason.
 			break
 		}
 		gasUsed += uint64(txsResult.GetGasUsed())
@@ -534,6 +534,7 @@ func (e *EVMBackend) GetCoinbase() (sdk.AccAddress, error) {
 func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransaction, error) {
 	res, err := e.GetTxByEthHash(txHash)
 	hexTx := txHash.Hex()
+
 	if err != nil {
 		// try to find tx in mempool
 		txs, err := e.PendingTransactions()
@@ -568,12 +569,17 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 		return nil, nil
 	}
 
-	if res.TxResult.Code != 0 {
+	if !TxSuccessOrExceedsBlockGasLimit(&res.TxResult) {
 		return nil, errors.New("invalid ethereum tx")
 	}
 
-	msgIndex, attrs := types.FindTxAttributes(res.TxResult.Events, hexTx)
-	if msgIndex < 0 {
+	parsedTxs, err := types.ParseTxResult(&res.TxResult)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse tx events: %s", hexTx)
+	}
+
+	parsedTx := parsedTxs.GetTxByHash(txHash)
+	if parsedTx == nil {
 		return nil, fmt.Errorf("ethereum tx not found in msgs: %s", hexTx)
 	}
 
@@ -583,7 +589,7 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 	}
 
 	// the `msgIndex` is inferred from tx events, should be within the bound.
-	msg, ok := tx.GetMsgs()[msgIndex].(*evmtypes.MsgEthereumTx)
+	msg, ok := tx.GetMsgs()[parsedTx.MsgIndex].(*evmtypes.MsgEthereumTx)
 	if !ok {
 		return nil, errors.New("invalid ethereum tx")
 	}
@@ -594,12 +600,7 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 		return nil, err
 	}
 
-	// Try to find txIndex from events
-	found := false
-	txIndex, err := types.GetUint64Attribute(attrs, evmtypes.AttributeKeyTxIndex)
-	if err == nil {
-		found = true
-	} else {
+	if parsedTx.EthTxIndex == -1 {
 		// Fallback to find tx index by iterating all valid eth transactions
 		blockRes, err := e.clientCtx.Client.BlockResults(e.ctx, &block.Block.Height)
 		if err != nil {
@@ -608,22 +609,27 @@ func (e *EVMBackend) GetTransactionByHash(txHash common.Hash) (*types.RPCTransac
 		msgs := e.GetEthereumMsgsFromTendermintBlock(block, blockRes)
 		for i := range msgs {
 			if msgs[i].Hash == hexTx {
-				txIndex = uint64(i)
-				found = true
+				parsedTx.EthTxIndex = int64(i)
 				break
 			}
 		}
 	}
-	if !found {
+	if parsedTx.EthTxIndex == -1 {
 		return nil, errors.New("can't find index of ethereum tx")
+	}
+
+	baseFee, err := e.BaseFee(block.Block.Height)
+	if err != nil {
+		e.logger.Debug("HeaderByHash BaseFee failed", "height", block.Block.Height, "error", err.Error())
+		return nil, err
 	}
 
 	return types.NewTransactionFromMsg(
 		msg,
 		common.BytesToHash(block.BlockID.Hash.Bytes()),
 		uint64(res.Height),
-		txIndex,
-		nil,
+		uint64(parsedTx.EthTxIndex),
+		baseFee,
 	)
 }
 
@@ -902,7 +908,8 @@ func (e *EVMBackend) GetEthereumMsgsFromTendermintBlock(block *tmrpctypes.Result
 
 	for i, tx := range block.Block.Txs {
 		// check tx exists on EVM by cross checking with blockResults
-		if txResults[i].Code != 0 {
+		// include the tx that exceeds block gas limit
+		if !TxSuccessOrExceedsBlockGasLimit(txResults[i]) {
 			e.logger.Debug("invalid tx result code", "cosmos-hash", hexutil.Encode(tx.Hash()))
 			continue
 		}
