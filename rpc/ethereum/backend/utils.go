@@ -14,6 +14,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrpctypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/tharsis/ethermint/rpc/ethereum/types"
@@ -271,4 +272,19 @@ func TxSuccessOrExceedsBlockGasLimit(res *abci.ResponseDeliverTx) bool {
 // workaround for issue: https://github.com/cosmos/cosmos-sdk/issues/10832
 func ShouldIgnoreGasUsed(res *abci.ResponseDeliverTx) bool {
 	return res.GetCode() == 11 && strings.Contains(res.GetLog(), "no block gas left to run tx: out of gas")
+}
+
+// GetLogsFromBlockResults returns the list of event logs from the tendermint block result response
+func GetLogsFromBlockResults(blockRes *tmrpctypes.ResultBlockResults) ([][]*ethtypes.Log, error) {
+	blockLogs := [][]*ethtypes.Log{}
+	for _, txResult := range blockRes.TxsResults {
+		logs, err := AllTxLogsFromEvents(txResult.Events)
+		if err != nil {
+			return nil, err
+		}
+
+		blockLogs = append(blockLogs, logs...)
+	}
+
+	return blockLogs, nil
 }
