@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math/big"
+	"testing"
+
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	"github.com/tharsis/ethermint/rpc/ethereum/types"
-	"math/big"
-	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	evmtypes "github.com/tharsis/ethermint/x/evm/types"
@@ -794,6 +795,7 @@ func (s *IntegrationTestSuite) TestBatchETHTransactions() {
 		err = msgTx.Sign(s.ethSigner, s.network.Validators[0].ClientCtx.Keyring)
 		s.Require().NoError(err)
 
+		msgTx.From = ""
 		msgs = append(msgs, msgTx.GetMsgs()...)
 		txData, err := evmtypes.UnpackTxData(msgTx.Data)
 		s.Require().NoError(err)
