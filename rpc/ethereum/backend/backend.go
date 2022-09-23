@@ -103,7 +103,10 @@ func NewEVMBackend(ctx *server.Context, logger log.Logger, clientCtx client.Cont
 		panic(err)
 	}
 
-	appConf := config.GetConfig(ctx.Viper)
+	appConf, err := config.GetConfig(ctx.Viper)
+	if err != nil {
+		panic(err)
+	}
 
 	return &EVMBackend{
 		ctx:         context.Background(),
