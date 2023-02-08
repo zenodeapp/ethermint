@@ -121,7 +121,9 @@ which accepts a path for the resulting pprof file.
 			withTM, _ := cmd.Flags().GetBool(srvflags.WithTendermint)
 			if !withTM {
 				serverCtx.Logger.Info("starting ABCI without Tendermint")
-				return startStandAlone(serverCtx, opts)
+				return wrapCPUProfile(serverCtx, func() error {
+					return startStandAlone(serverCtx, opts)
+				})
 			}
 
 			serverCtx.Logger.Info("Unlocking keyring")
@@ -138,7 +140,9 @@ which accepts a path for the resulting pprof file.
 			serverCtx.Logger.Info("starting ABCI with Tendermint")
 
 			// amino is needed here for backwards compatibility of REST routes
-			err = startInProcess(serverCtx, clientCtx, opts)
+			err = wrapCPUProfile(serverCtx, func() error {
+				return startInProcess(serverCtx, clientCtx, opts)
+			})
 			errCode, ok := err.(server.ErrorCode)
 			if !ok {
 				return err
@@ -268,30 +272,6 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 	cfg := ctx.Config
 	home := cfg.RootDir
 	logger := ctx.Logger
-	if cpuProfile := ctx.Viper.GetString(srvflags.CPUProfile); cpuProfile != "" {
-		fp, err := ethdebug.ExpandHome(cpuProfile)
-		if err != nil {
-			ctx.Logger.Debug("failed to get filepath for the CPU profile file", "error", err.Error())
-			return err
-		}
-		f, err := os.Create(fp)
-		if err != nil {
-			return err
-		}
-
-		ctx.Logger.Info("starting CPU profiler", "profile", cpuProfile)
-		if err := pprof.StartCPUProfile(f); err != nil {
-			return err
-		}
-
-		defer func() {
-			ctx.Logger.Info("stopping CPU profiler", "profile", cpuProfile)
-			pprof.StopCPUProfile()
-			if err := f.Close(); err != nil {
-				logger.Error("failed to close CPU profiler file", "error", err.Error())
-			}
-		}()
-	}
 
 	traceWriterFile := ctx.Viper.GetString(srvflags.TraceStore)
 	db, err := opts.DBOpener(home, server.GetAppDBBackend(ctx.Viper))
@@ -626,4 +606,46 @@ func startTelemetry(cfg config.Config) (*telemetry.Metrics, error) {
 		return nil, nil
 	}
 	return telemetry.New(cfg.Telemetry)
+}
+
+// wrapCPUProfile runs callback in a goroutine, then wait for quit signals.
+func wrapCPUProfile(ctx *server.Context, callback func() error) error {
+	if cpuProfile := ctx.Viper.GetString(srvflags.CPUProfile); cpuProfile != "" {
+		fp, err := ethdebug.ExpandHome(cpuProfile)
+		if err != nil {
+			ctx.Logger.Debug("failed to get filepath for the CPU profile file", "error", err.Error())
+			return err
+		}
+		f, err := os.Create(fp)
+		if err != nil {
+			return err
+		}
+
+		ctx.Logger.Info("starting CPU profiler", "profile", cpuProfile)
+		if err := pprof.StartCPUProfile(f); err != nil {
+			return err
+		}
+
+		defer func() {
+			ctx.Logger.Info("stopping CPU profiler", "profile", cpuProfile)
+			pprof.StopCPUProfile()
+			if err := f.Close(); err != nil {
+				ctx.Logger.Info("failed to close cpu-profile file", "profile", cpuProfile, "err", err.Error())
+			}
+		}()
+	}
+
+	errCh := make(chan error)
+	go func() {
+		errCh <- callback()
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+
+	case <-time.After(types.ServerStartTime):
+	}
+
+	return server.WaitForQuitSignals()
 }

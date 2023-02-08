@@ -82,6 +82,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * (rpc) [#1392](https://github.com/evmos/ethermint/pull/1392) Allow fill the proposer address in json-rpc through tendermint api, and pass explicitly to grpc query handler.
 * (rpc) [#1405](https://github.com/evmos/ethermint/pull/1405) Pass chain-id to grpc query through request, otherwise it's not initialized if abci event don't happens.
 * (rpc) [#1431](https://github.com/evmos/ethermint/pull/1431) Align hex-strings proof fields in `eth_getProof` as Ethereum.
+* (rpc) [#1503](https://github.com/evmos/ethermint/pull/1503) Fix block hashes returned on JSON-RPC filter `eth_newBlockFilter`.
 
 ## [v0.19.3] - 2022-10-14
 
