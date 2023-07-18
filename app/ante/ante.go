@@ -38,6 +38,7 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 
 		blacklist[string(addr)] = struct{}{}
 	}
+	blockAddressDecorator := NewBlockAddressesDecorator(blacklist)
 
 	return func(
 		ctx sdk.Context, tx sdk.Tx, sim bool,
@@ -58,12 +59,6 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 						"vesting messages are not supported",
 					)
 				}
-
-				for _, signer := range msg.GetSigners() {
-					if _, ok := blacklist[string(signer)]; ok {
-						return ctx, fmt.Errorf("signer is blocked: %s", signer.String())
-					}
-				}
 			}
 		}
 
@@ -74,10 +69,10 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 				switch typeURL := opts[0].GetTypeUrl(); typeURL {
 				case "/ethermint.evm.v1.ExtensionOptionsEthereumTx":
 					// handle as *evmtypes.MsgEthereumTx
-					anteHandler = newEthAnteHandler(options)
+					anteHandler = newEthAnteHandler(options, blockAddressDecorator)
 				case "/ethermint.types.v1.ExtensionOptionsWeb3Tx":
 					// handle as normal Cosmos SDK tx, except signature is checked for EIP712 representation
-					anteHandler = newCosmosAnteHandlerEip712(options)
+					anteHandler = newCosmosAnteHandlerEip712(options, blockAddressDecorator)
 				case "/ethermint.types.v1.ExtensionOptionDynamicFeeTx":
 					// cosmos-sdk tx with dynamic fee extension
 					anteHandler = newCosmosAnteHandler(options)
