@@ -160,3 +160,28 @@ def test_percentiles(cluster):
         ]
         result = [future.result() for future in as_completed(tasks)]
         assert all(msg in res["error"]["message"] for res in result)
+
+
+def test_concurrent(custom_ethermint):
+    w3: Web3 = custom_ethermint.w3
+    tx = {"to": ADDRS["community"], "value": 10, "gasPrice": w3.eth.gas_price}
+    # send multi txs, overlap happens with query with 2nd tx's block number
+    send_transaction(w3, tx)
+    receipt1 = send_transaction(w3, tx)
+    b1 = receipt1.blockNumber
+    send_transaction(w3, tx)
+
+    call = w3.provider.make_request
+    field = "baseFeePerGas"
+
+    percentiles = []
+    method = "eth_feeHistory"
+    # big enough concurrent requests to trigger overwrite bug
+    total = 10
+    size = 2
+    params = [size, hex(b1), percentiles]
+    res = []
+    with ThreadPoolExecutor(total) as exec:
+        t = [exec.submit(call, method, params) for i in range(total)]
+        res = [future.result()["result"][field] for future in as_completed(t)]
+    assert all(sublist == res[0] for sublist in res), res
