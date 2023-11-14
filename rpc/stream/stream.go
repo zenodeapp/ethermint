@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+// Stream implements a data stream, user can subscribe the stream in blocking or non-blocking way using offsets.
+// it use a segmented ring buffer to store the items, with a fixed capacity, when buffer is full, the old data get pruned when new data comes.
 type Stream[V any] struct {
 	segments      *Queue[[]V]
 	segmentSize   int
