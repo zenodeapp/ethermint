@@ -39,23 +39,8 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
-// NewEVM generates a go-ethereum VM from the provided Message fields and the chain parameters
-// (ChainConfig and module Params). It additionally sets the validator operator address as the
-// coinbase address to make it available for the COINBASE opcode, even though there is no
-// beneficiary of the coinbase transaction (since we're not mining).
-//
-// NOTE: the RANDOM opcode is currently not supported since it requires
-// RANDAO implementation. See https://github.com/evmos/ethermint/pull/1520#pullrequestreview-1200504697
-// for more information.
-
-func (k *Keeper) NewEVM(
-	ctx sdk.Context,
-	msg core.Message,
-	cfg *statedb.EVMConfig,
-	tracer vm.EVMLogger,
-	stateDB vm.StateDB,
-) *vm.EVM {
-	blockCtx := vm.BlockContext{
+func (k *Keeper) NewEVMBlockContext(ctx sdk.Context, cfg *statedb.EVMConfig) vm.BlockContext {
+	return vm.BlockContext{
 		CanTransfer: core.CanTransfer,
 		Transfer:    core.Transfer,
 		GetHash:     k.GetHashFn(ctx),
@@ -67,6 +52,35 @@ func (k *Keeper) NewEVM(
 		BaseFee:     cfg.BaseFee,
 		Random:      nil, // not supported
 	}
+}
+
+// NewEVM generates a go-ethereum VM from the provided Message fields and the chain parameters
+// (ChainConfig and module Params). It additionally sets the validator operator address as the
+// coinbase address to make it available for the COINBASE opcode, even though there is no
+// beneficiary of the coinbase transaction (since we're not mining).
+//
+// NOTE: the RANDOM opcode is currently not supported since it requires
+// RANDAO implementation. See https://github.com/evmos/ethermint/pull/1520#pullrequestreview-1200504697
+// for more information.
+func (k *Keeper) NewEVM(
+	ctx sdk.Context,
+	msg core.Message,
+	cfg *statedb.EVMConfig,
+	tracer vm.EVMLogger,
+	stateDB vm.StateDB,
+) *vm.EVM {
+	blockCtx := k.NewEVMBlockContext(ctx, cfg)
+	return k.NewEVMWithBlockCtx(ctx, msg, cfg, tracer, stateDB, blockCtx)
+}
+
+func (k *Keeper) NewEVMWithBlockCtx(
+	ctx sdk.Context,
+	msg core.Message,
+	cfg *statedb.EVMConfig,
+	tracer vm.EVMLogger,
+	stateDB vm.StateDB,
+	blockCtx vm.BlockContext,
+) *vm.EVM {
 	txCtx := core.NewEVMTxContext(&msg)
 	if tracer == nil {
 		tracer = k.Tracer(ctx, msg, cfg.ChainConfig)
@@ -196,7 +210,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, msgEth *types.MsgEthereumTx) 
 	}
 
 	// pass true to commit the StateDB
-	res, err := k.ApplyMessageWithConfig(tmpCtx, msg, nil, true, cfg, txConfig, nil, false)
+	res, err := k.ApplyMessageWithConfig(tmpCtx, msg, nil, true, cfg, txConfig, nil, nil, false)
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "failed to apply ethereum core message")
 	}
@@ -288,7 +302,7 @@ func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer vm.EVMLo
 	}
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
-	return k.ApplyMessageWithConfig(ctx, msg, tracer, commit, cfg, txConfig, nil, false)
+	return k.ApplyMessageWithConfig(ctx, msg, tracer, commit, cfg, txConfig, nil, nil, false)
 }
 
 // ApplyMessageWithConfig computes the new state by applying the given message against the existing state.
@@ -345,6 +359,7 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
 	overrides *rpctypes.StateOverride,
+	blockOverrides *rpctypes.BlockOverrides,
 	debugTrace bool,
 ) (*types.MsgEthereumTxResponse, error) {
 	var (
@@ -360,13 +375,20 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context,
 	}
 
 	stateDB := statedb.NewWithParams(ctx, k, txConfig, cfg.Params)
+	var evm *vm.EVM
 	if overrides != nil {
 		if err := overrides.Apply(stateDB); err != nil {
 			return nil, errorsmod.Wrap(err, "failed to apply state override")
 		}
 	}
+	if debugTrace && blockOverrides != nil {
+		blockCtx := k.NewEVMBlockContext(ctx, cfg)
+		blockOverrides.Apply(&blockCtx)
+		evm = k.NewEVMWithBlockCtx(ctx, msg, cfg, tracer, stateDB, blockCtx)
+	} else {
+		evm = k.NewEVM(ctx, msg, cfg, tracer, stateDB)
+	}
 
-	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
 	leftoverGas := msg.GasLimit
 	sender := vm.AccountRef(msg.From)
 	// Allow the tracer captures the tx level events, mainly the gas consumption.

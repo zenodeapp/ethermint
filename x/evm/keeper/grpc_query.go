@@ -267,7 +267,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
 	// pass false to not commit StateDB
-	res, err := k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig, &overrides, false)
+	res, err := k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig, &overrides, nil, false)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -362,7 +362,7 @@ func (k Keeper) EstimateGas(c context.Context, req *types.EthCallRequest) (*type
 		}
 
 		// pass false to not commit StateDB
-		rsp, err = k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig, nil, false)
+		rsp, err = k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig, nil, nil, false)
 		if err != nil {
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
@@ -444,7 +444,7 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		}
 		txConfig.TxHash = ethTx.Hash()
 		txConfig.TxIndex = uint(i)
-		rsp, err := k.ApplyMessageWithConfig(ctx, *msg, types.NewNoOpTracer(), true, cfg, txConfig, nil, true)
+		rsp, err := k.ApplyMessageWithConfig(ctx, *msg, types.NewNoOpTracer(), true, cfg, txConfig, nil, nil, true)
 		if err != nil {
 			continue
 		}
@@ -686,8 +686,19 @@ func (k *Keeper) traceMsg(
 			return nil, 0, status.Error(codes.InvalidArgument, err.Error())
 		}
 	}
+	var blockOverrides rpctypes.BlockOverrides
+	if traceConfig.BlockOverrides != nil {
+		config, err := json.Marshal(traceConfig.BlockOverrides)
+		if err != nil {
+			return nil, 0, status.Error(codes.InvalidArgument, err.Error())
+		}
 
-	res, err := k.ApplyMessageWithConfig(ctx, msg, tracer, commitMessage, cfg, txConfig, &stateOverrides, true)
+		if err := json.Unmarshal(config, &blockOverrides); err != nil {
+			return nil, 0, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+
+	res, err := k.ApplyMessageWithConfig(ctx, msg, tracer, commitMessage, cfg, txConfig, &stateOverrides, &blockOverrides, true)
 	if err != nil {
 		return nil, 0, status.Error(codes.Internal, err.Error())
 	}
@@ -794,7 +805,7 @@ func (k *Keeper) traceTx(
 		}
 	}
 
-	res, err := k.ApplyMessageWithConfig(ctx, *msg, tracer, commitMessage, cfg, txConfig, &stateOverrides, true)
+	res, err := k.ApplyMessageWithConfig(ctx, *msg, tracer, commitMessage, cfg, txConfig, &stateOverrides, nil, true)
 	if err != nil {
 		return nil, 0, status.Error(codes.Internal, err.Error())
 	}

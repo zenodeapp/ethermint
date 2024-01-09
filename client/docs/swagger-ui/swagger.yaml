@@ -2658,6 +2658,34 @@ paths:
           in: query
           required: false
           type: string
+        - name: trace_config.block_overrides.number
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.difficulty
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.time
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.gas_limit
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.coinbase
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.random
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.base_fee
+          in: query
+          required: false
+          type: string
         - name: block_number
           description: block_number of the traced block.
           in: query
@@ -3103,6 +3131,34 @@ paths:
           type: boolean
         - name: trace_config.tracer_json_config
           description: tracer_json_config configures the tracer using a JSON string.
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.number
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.difficulty
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.time
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.gas_limit
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.coinbase
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.random
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.base_fee
           in: query
           required: false
           type: string
@@ -3617,6 +3673,34 @@ paths:
           in: query
           required: false
           type: string
+        - name: trace_config.block_overrides.number
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.difficulty
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.time
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.gas_limit
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.coinbase
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.random
+          in: query
+          required: false
+          type: string
+        - name: trace_config.block_overrides.base_fee
+          in: query
+          required: false
+          type: string
         - name: block_number
           description: block_number of requested transaction.
           in: query
@@ -3880,6 +3964,24 @@ paths:
       tags:
         - Query
 definitions:
+  ethermint.evm.v1.BlockOverrides:
+    type: object
+    properties:
+      number:
+        type: string
+      difficulty:
+        type: string
+      time:
+        type: string
+      gas_limit:
+        type: string
+      coinbase:
+        type: string
+      random:
+        type: string
+      base_fee:
+        type: string
+    description: BlockOverrides is a set of header fields to override.
   ethermint.evm.v1.ChainConfig:
     type: object
     properties:
@@ -4896,6 +4998,25 @@ definitions:
         title: >-
           temporary state modifications to Geth in order to simulate the effects
           of eth_call
+      block_overrides:
+        title: overrides block context fields
+        type: object
+        properties:
+          number:
+            type: string
+          difficulty:
+            type: string
+          time:
+            type: string
+          gas_limit:
+            type: string
+          coinbase:
+            type: string
+          random:
+            type: string
+          base_fee:
+            type: string
+        description: BlockOverrides is a set of header fields to override.
     description: TraceConfig holds extra parameters to trace functions.
   google.protobuf.Any:
     type: object
