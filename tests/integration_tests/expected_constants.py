@@ -159,3 +159,5 @@ EXPECTED_CONTRACT_CREATE_TRACER = {
     "type": "CREATE",
     "value": "0x0",
 }
+
+EXPECTED_BLOCK_OVERRIDES_TRACERS = '{"failed": false, "gas": 53020, "returnValue": "", "structLogs": [{"depth": 1, "gas": 12517, "gasCost": 2, "op": "NUMBER", "pc": 0, "stack": []}, {"depth": 1, "gas": 12515, "gasCost": 0, "op": "STOP", "pc": 1, "stack": ["0x1337"]}]}'  # noqa: E501

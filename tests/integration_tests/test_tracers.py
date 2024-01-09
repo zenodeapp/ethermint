@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from web3 import Web3
 
 from .expected_constants import (
+    EXPECTED_BLOCK_OVERRIDES_TRACERS,
     EXPECTED_CALLTRACERS,
     EXPECTED_CONTRACT_CREATE_TRACER,
     EXPECTED_STRUCT_TRACER,
@@ -454,3 +455,25 @@ def test_debug_tracecall_return_revert_data_when_call_failed(ethermint):
         tx_res["returnValue"]
         == "08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000001a46756e6374696f6e20686173206265656e207265766572746564000000000000"  # noqa: E501
     )
+
+
+def test_debug_tracecall_block_overrides(ethermint, geth):
+    method = "debug_traceCall"
+    gas = hex(65535)
+    price = hex(88500000000)
+    # https://github.com/ethereum/go-ethereum/blob/v1.11.6/core/vm/opcodes.go#L95
+    tx = {"from": ADDRS["validator"], "input": "0x43", "gas": gas, "gasPrice": price}
+    future_blk = "0x1337"
+    tracer = {"blockOverrides": {"number": future_blk}}
+
+    def process(w3):
+        w3_wait_for_new_blocks(w3, 1)
+        tx_res = w3.provider.make_request(method, [tx, "latest", tracer])
+        return json.dumps(tx_res["result"], sort_keys=True)
+
+    providers = [ethermint.w3, geth.w3]
+    with ThreadPoolExecutor(len(providers)) as exec:
+        tasks = [exec.submit(process, w3) for w3 in providers]
+        res = [future.result() for future in as_completed(tasks)]
+        assert len(res) == len(providers)
+        assert (res[0] == res[-1] == EXPECTED_BLOCK_OVERRIDES_TRACERS), res
