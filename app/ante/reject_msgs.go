@@ -3,7 +3,7 @@ package ante
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"github.com/cosmos/cosmos-sdk/x/authz"
+	// "github.com/cosmos/cosmos-sdk/x/authz"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
@@ -22,14 +22,14 @@ func (rmd RejectMessagesDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 			)
 		}
 
-		if ctx.IsCheckTx() {
-			if _, ok := msg.(*authz.MsgExec); ok {
-				return ctx, sdkerrors.Wrapf(
-					sdkerrors.ErrInvalidType,
-					"authz Exec message is disabled",
-				)
-			}
-		}
+		// if ctx.IsCheckTx() {
+		// 	if _, ok := msg.(*authz.MsgExec); ok {
+		// 		return ctx, sdkerrors.Wrapf(
+		// 			sdkerrors.ErrInvalidType,
+		// 			"authz Exec message is disabled",
+		// 		)
+		// 	}
+		// }
 	}
 	return next(ctx, tx, simulate)
 }
